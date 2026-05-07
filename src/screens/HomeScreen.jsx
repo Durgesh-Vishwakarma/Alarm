@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import {
   FlatList,
-  Image,
   StyleSheet,
   Switch,
   Text,
@@ -10,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Header from '../components/Header';
 import AlarmSettingsModal from '../components/modals/AlarmSettingsModal';
 import { colors, spacing, typography } from '../theme';
 
@@ -24,6 +24,7 @@ export const HomeScreen = () => {
   const [isModalVisible, setModalVisible] = useState(false);
   const [editingAlarm, setEditingAlarm] = useState(null);
   const [permissionStatus, setPermissionStatus] = useState('Not requested');
+  const activeCount = alarms.filter((alarm) => alarm.isActive).length;
 
   const toggleAlarm = (id) => {
     setAlarms((current) =>
@@ -119,18 +120,12 @@ export const HomeScreen = () => {
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <View style={styles.topBar}>
-          <View style={styles.profileSection}>
-            <Image
-              source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' }}
-              style={styles.avatar}
-            />
-            <View>
-              <Text style={styles.greeting}>Good Evening,</Text>
-              <Text style={styles.userName}>Durgesh</Text>
-            </View>
-          </View>
-        </View>
+        <Header
+          greeting="Good Evening,"
+          name="Durgesh"
+          avatarUri="https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
+          activeCount={activeCount}
+        />
 
         <FlatList
           data={alarms}
@@ -161,30 +156,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   safeArea: { flex: 1 },
 
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
-  },
-  profileSection: { flexDirection: 'row', alignItems: 'center' },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    marginRight: 12,
-    backgroundColor: colors.dot,
-  },
-  greeting: { fontFamily: typography.family.regular, fontSize: 13, color: colors.text.secondary },
-  userName: {
-    fontFamily: typography.family.extraBold,
-    fontSize: 20,
-    color: colors.text.primary,
-    letterSpacing: -0.5,
-  },
-  listContent: { paddingHorizontal: spacing.md, paddingBottom: 120, paddingTop: spacing.md },
+  listContent: { paddingHorizontal: spacing.md, paddingBottom: 120, paddingTop: spacing.sm },
 
   alarmCard: {
     backgroundColor: colors.white,
