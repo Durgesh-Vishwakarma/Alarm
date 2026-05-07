@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AlarmSettingsModal } from '../components/modals/AlarmSettingsModal';
+import AlarmSettingsModal from '../components/modals/AlarmSettingsModal';
 import { colors, spacing, typography } from '../theme';
 
 const MOCK_ALARMS = [
@@ -23,6 +23,7 @@ export const HomeScreen = () => {
   const [alarms, setAlarms] = useState(MOCK_ALARMS);
   const [isModalVisible, setModalVisible] = useState(false);
   const [editingAlarm, setEditingAlarm] = useState(null);
+  const [permissionStatus, setPermissionStatus] = useState('Not requested');
 
   const toggleAlarm = (id) => {
     setAlarms((current) =>
@@ -37,39 +38,83 @@ export const HomeScreen = () => {
     setModalVisible(true);
   };
 
-  const renderAlarmCard = ({ item }) => (
-    <TouchableOpacity
-      style={[styles.alarmCard, !item.isActive && styles.alarmCardInactive]}
-      activeOpacity={0.7}
-      onPress={() => openSettings(item)}
-    >
-      <View style={styles.cardHeader}>
-        <View style={styles.timeContainer}>
-          <Text style={[styles.timeText, !item.isActive && styles.inactiveText]}>{item.time}</Text>
-          <Text style={[styles.periodText, !item.isActive && styles.inactiveText]}>{item.period}</Text>
-        </View>
-        <Switch
-          trackColor={{ false: colors.dot, true: colors.primary }}
-          thumbColor={colors.white}
-          ios_backgroundColor={colors.dot}
-          onValueChange={() => toggleAlarm(item.id)}
-          value={item.isActive}
-        />
-      </View>
+  const closeSettings = () => {
+    setModalVisible(false);
+    setEditingAlarm(null);
+  };
 
-      <View style={styles.cardFooter}>
-        <Text style={[styles.labelText, !item.isActive && styles.inactiveText]} numberOfLines={1}>
-          {item.label}
-        </Text>
-        <View style={[styles.taskBadge, !item.isActive && styles.taskBadgeInactive]}>
-          <Ionicons name="camera-outline" size={14} color={item.isActive ? colors.primary : colors.text.secondary} />
-          <Text style={[styles.taskText, !item.isActive && styles.inactiveText]} numberOfLines={1}>
-            {item.task}
-          </Text>
+  const handleSaveAlarm = (payload) => {
+    setAlarms((current) => {
+      if (payload.id) {
+        return current.map((alarm) => (alarm.id === payload.id ? { ...alarm, ...payload } : alarm));
+      }
+      return [{ ...payload, id: Date.now().toString() }, ...current];
+    });
+    closeSettings();
+  };
+
+  const handleRequestPermission = () => {
+    setPermissionStatus('Requested (mock)');
+  };
+
+  const renderAlarmCard = ({ item }) => {
+    const isActive = item.isActive;
+    const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    const activeDays = item.repeatDays || ['M', 'W', 'F'];
+
+    return (
+      <TouchableOpacity
+        style={[styles.alarmCard, !isActive && styles.alarmCardInactive]}
+        activeOpacity={0.8}
+        onPress={() => openSettings(item)}
+      >
+        <View style={styles.cardHeader}>
+          <View style={styles.headingContainer}>
+            <Text style={[styles.alarmHeading, !isActive && styles.inactiveText]}>
+              {item.label || 'Untitled Alarm'}
+            </Text>
+            <View style={styles.dayIndicatorRow}>
+              {days.map((day, index) => {
+                const isDayActive = activeDays.includes(day);
+                return (
+                  <Text
+                    key={`${day}-${index}`}
+                    style={[
+                      styles.dayTinyText,
+                      isDayActive && isActive ? styles.dayTinyTextActive : styles.dayTinyTextInactive,
+                    ]}
+                  >
+                    {day}
+                  </Text>
+                );
+              })}
+            </View>
+          </View>
+
+          <Switch
+            trackColor={{ false: colors.dot, true: colors.primary }}
+            thumbColor={colors.white}
+            ios_backgroundColor={colors.dot}
+            onValueChange={() => toggleAlarm(item.id)}
+            value={isActive}
+          />
         </View>
-      </View>
-    </TouchableOpacity>
-  );
+
+        <View style={styles.timeRow}>
+          <Text style={[styles.timeText, !isActive && styles.inactiveText]}>{item.time}</Text>
+          <Text style={[styles.periodText, !isActive && styles.inactiveText]}>{item.period}</Text>
+        </View>
+
+        <View style={styles.cardFooter}>
+          <View style={[styles.taskBadge, !isActive && styles.taskBadgeInactive]}>
+            <Ionicons name="rocket-sharp" size={14} color={isActive ? colors.primary : colors.text.muted} />
+            <Text style={[styles.taskText, !isActive && styles.inactiveText]}>{item.task}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.border} style={styles.cardChevron} />
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -103,8 +148,10 @@ export const HomeScreen = () => {
       <AlarmSettingsModal
         visible={isModalVisible}
         editingAlarm={editingAlarm}
-        onClose={() => setModalVisible(false)}
-        onSave={() => setModalVisible(false)}
+        onClose={closeSettings}
+        onSave={handleSaveAlarm}
+        permissionStatus={permissionStatus}
+        onRequestPermission={handleRequestPermission}
       />
     </View>
   );
@@ -137,75 +184,86 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     letterSpacing: -0.5,
   },
-  listContent: { paddingHorizontal: spacing.lg, paddingBottom: 100, paddingTop: spacing.sm },
+  listContent: { paddingHorizontal: spacing.md, paddingBottom: 120, paddingTop: spacing.md },
 
   alarmCard: {
-    backgroundColor: colors.card,
+    backgroundColor: colors.white,
     marginBottom: spacing.md,
     padding: spacing.lg,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 10,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.05,
+    shadowRadius: 20,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
   },
   alarmCardInactive: {
-    backgroundColor: colors.inactive,
-    borderColor: colors.inactiveBorder,
+    backgroundColor: '#F9F9F9',
+    borderColor: 'transparent',
+    elevation: 0,
+    shadowOpacity: 0,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.md,
+    alignItems: 'flex-start',
+    marginBottom: 10,
   },
-  timeContainer: { flexDirection: 'row', alignItems: 'baseline' },
+  headingContainer: { flex: 1 },
+  alarmHeading: {
+    fontFamily: typography.family.bold,
+    fontSize: 17,
+    color: colors.text.primary,
+    marginBottom: 6,
+  },
+  dayIndicatorRow: { flexDirection: 'row', gap: 8 },
+  dayTinyText: { fontSize: 11, fontFamily: typography.family.bold },
+  dayTinyTextActive: { color: colors.primary },
+  dayTinyTextInactive: { color: '#D1D1D1' },
+
+  timeRow: { flexDirection: 'row', alignItems: 'baseline', marginVertical: 6 },
   timeText: {
     fontFamily: typography.family.extraBold,
-    fontSize: 42,
+    fontSize: 44,
     color: colors.text.primary,
-    letterSpacing: -1.5,
+    letterSpacing: -1,
   },
-  periodText: { fontFamily: typography.family.bold, fontSize: 16, color: colors.text.primary, marginLeft: 4 },
-  inactiveText: { color: colors.text.muted },
+  periodText: {
+    fontFamily: typography.family.bold,
+    fontSize: 16,
+    color: colors.text.primary,
+    marginLeft: 6,
+    opacity: 0.8,
+  },
+  inactiveText: { color: '#BDBDBD' },
 
   cardFooter: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: 14,
+    paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: spacing.md,
-  },
-  labelText: {
-    fontFamily: typography.family.bold,
-    fontSize: 15,
-    color: colors.text.primary,
-    flex: 1,
-    paddingRight: 10,
+    borderTopColor: '#F5F5F5',
   },
 
   taskBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    flexShrink: 1,
+    backgroundColor: '#FFF1F1',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 14,
   },
-  taskBadgeInactive: { backgroundColor: colors.tabBackground },
+  taskBadgeInactive: { backgroundColor: '#F0F0F0' },
   taskText: {
     fontFamily: typography.family.bold,
-    fontSize: 11,
+    fontSize: 12,
     color: colors.primary,
     marginLeft: 6,
-    textTransform: 'uppercase',
-    flexShrink: 1,
   },
+  cardChevron: { marginLeft: 'auto' },
 
   fab: {
     position: 'absolute',
