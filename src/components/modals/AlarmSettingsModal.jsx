@@ -219,27 +219,7 @@ const AlarmSettingsModal = ({
               </View>
             </View>
 
-            <View style={styles.manualRow}>
-              <TextInput
-                style={styles.manualInput}
-                value={formData.hour}
-                onChangeText={(value) => updateField('hour', value.padStart(2, '0'))}
-                keyboardType="number-pad"
-                maxLength={2}
-                placeholder="06"
-                placeholderTextColor={colors.text.secondary}
-              />
-              <Text style={styles.manualSeparator}>:</Text>
-              <TextInput
-                style={styles.manualInput}
-                value={formData.minute}
-                onChangeText={(value) => updateField('minute', value.padStart(2, '0'))}
-                keyboardType="number-pad"
-                maxLength={2}
-                placeholder="00"
-                placeholderTextColor={colors.text.secondary}
-              />
-            </View>
+          
 
             <SettingSection title="Schedule" icon="calendar-outline" style={styles.scheduleSection}>
               <View style={styles.dayRow}>
@@ -372,29 +352,44 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.white,
-    borderRadius: 25,
-    height: 180,
+    borderRadius: 20,
+    height: 168,
     marginBottom: 16,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  pickerContainer: { height: 150, width: 80 },
-  pickerSpacer: { paddingVertical: 50 },
+  pickerContainer: { height: 152, width: 72 },
+  pickerSpacer: { paddingVertical: 51 },
   pickerItem: { height: ITEM_HEIGHT, justifyContent: 'center', alignItems: 'center' },
-  pickerText: { fontSize: 32, color: '#DDD', fontFamily: typography.family.bold },
-  pickerTextActive: { fontSize: 48, color: colors.text.primary, fontFamily: typography.family.extraBold },
+  pickerText: { fontSize: 28, color: colors.text.muted, fontFamily: typography.family.bold },
+  pickerTextActive: { fontSize: 40, color: colors.text.primary, fontFamily: typography.family.extraBold },
   pickerHighlight: {
     position: 'absolute',
-    top: (150 - ITEM_HEIGHT) / 2,
+    top: (152 - ITEM_HEIGHT) / 2,
     left: 0,
     right: 0,
     height: ITEM_HEIGHT,
-    borderRadius: 12,
-    backgroundColor: 'rgba(226,55,68,0.06)',
+    borderRadius: 10,
+    backgroundColor: 'transparent',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
   },
-  timeSeparator: { fontSize: 40, fontFamily: typography.family.extraBold, marginHorizontal: 10 },
-  periodColumn: { marginLeft: 20, gap: 10 },
-  periodPill: { paddingVertical: 8, paddingHorizontal: 15, borderRadius: 12, backgroundColor: '#F0F0F0' },
-  periodPillActive: { backgroundColor: colors.white, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 6 },
+  timeSeparator: { fontSize: 30, fontFamily: typography.family.extraBold, marginHorizontal: 10, color: colors.text.secondary },
+  periodColumn: { marginLeft: 14, gap: 6 },
+  periodPill: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  periodPillActive: {
+    backgroundColor: colors.white,
+    borderColor: colors.primary,
+  },
   periodPillText: { fontFamily: typography.family.bold, color: colors.text.secondary },
   periodPillTextActive: { color: colors.primary },
 

@@ -106,7 +106,7 @@ export const HomeScreen = () => {
           <Text style={[styles.periodText, !isActive && styles.inactiveText]}>{item.period}</Text>
         </View>
 
-        <View style={styles.cardFooter}>
+        <View style={[styles.cardFooter, !isActive && styles.cardFooterInactive]}>
           <View style={[styles.taskBadge, !isActive && styles.taskBadgeInactive]}>
             <Ionicons name="rocket-sharp" size={14} color={isActive ? colors.primary : colors.text.muted} />
             <Text style={[styles.taskText, !isActive && styles.inactiveText]}>{item.task}</Text>
@@ -172,10 +172,12 @@ const styles = StyleSheet.create({
     borderColor: '#F0F0F0',
   },
   alarmCardInactive: {
-    backgroundColor: '#F9F9F9',
+    backgroundColor: colors.background,
     borderColor: 'transparent',
+    borderWidth: 0,
     elevation: 0,
     shadowOpacity: 0,
+    shadowRadius: 0,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -218,6 +220,10 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#F5F5F5',
+  },
+  cardFooterInactive: {
+    borderTopWidth: 0,
+    paddingTop: 0,
   },
 
   taskBadge: {
