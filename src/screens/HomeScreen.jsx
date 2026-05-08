@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   FlatList,
   StyleSheet,
   Switch,
@@ -8,30 +9,97 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { RectButton, Swipeable } from 'react-native-gesture-handler';
+import Animated, { FadeInDown, Layout } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '../components/Header';
 import AlarmSettingsModal from '../components/modals/AlarmSettingsModal';
+import { getChallengeById, getChallengeByTitle } from '../data/challengeCatalog';
+import { deleteAlarm, loadAlarms, saveAlarms, upsertAlarm } from '../services/alarmStorage';
+import { loadWakeStats } from '../services/streakService';
+import { requestNotificationPermissions, rescheduleAlarm } from '../services/notificationService';
+import { getNextAlarmDate } from '../services/alarmRuntime';
 import { colors, spacing, typography } from '../theme';
 
-const MOCK_ALARMS = [
-  { id: '1', time: '06:00', period: 'AM', label: 'Morning Workout', task: 'Scan Dumbbell', isActive: true },
-  { id: '2', time: '07:30', period: 'AM', label: 'Deep Work', task: 'Scan Coffee Mug', isActive: false },
-  { id: '3', time: '08:00', period: 'AM', label: 'Leave for Office', task: 'Scan Keys', isActive: true },
-];
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+const getMinutesUntilAlarm = (alarm) => {
+  const now = new Date();
+  const next = getNextAlarmDate(alarm, now);
+  return Math.round((next.getTime() - now.getTime()) / 60000);
+};
+
+const formatDuration = (minutes) => {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours === 0) return `${mins}m`;
+  if (mins === 0) return `${hours}h`;
+  return `${hours}h ${mins}m`;
+};
+
+const difficultyColor = {
+  Easy: '#12A150',
+  Focused: '#F59E0B',
+  Strict: colors.primary,
+};
 
 export const HomeScreen = () => {
-  const [alarms, setAlarms] = useState(MOCK_ALARMS);
+  const [alarms, setAlarms] = useState([]);
+  const [wakeStats, setWakeStats] = useState(null);
+  const [expandedAlarmId, setExpandedAlarmId] = useState(null);
   const [isModalVisible, setModalVisible] = useState(false);
   const [editingAlarm, setEditingAlarm] = useState(null);
   const [permissionStatus, setPermissionStatus] = useState('Not requested');
-  const activeCount = alarms.filter((alarm) => alarm.isActive).length;
 
-  const toggleAlarm = (id) => {
-    setAlarms((current) =>
-      current.map((alarm) =>
-        alarm.id === id ? { ...alarm, isActive: !alarm.isActive } : alarm
-      )
-    );
+  const hydrate = useCallback(async () => {
+    const [storedAlarms, storedStats] = await Promise.all([loadAlarms(), loadWakeStats()]);
+    setAlarms(storedAlarms);
+    setWakeStats(storedStats);
+  }, []);
+
+  useEffect(() => {
+    hydrate();
+  }, [hydrate]);
+
+  const activeAlarms = useMemo(() => alarms.filter((alarm) => alarm.isActive), [alarms]);
+  const activeCount = activeAlarms.length;
+  const nextAlarm = useMemo(() => {
+    return activeAlarms
+      .map((alarm) => ({ ...alarm, minutesUntil: getMinutesUntilAlarm(alarm) }))
+      .sort((a, b) => a.minutesUntil - b.minutesUntil)[0];
+  }, [activeAlarms]);
+
+  const completionRate = wakeStats?.attempted
+    ? Math.round((wakeStats.completed / wakeStats.attempted) * 100)
+    : 0;
+
+  const recommendations = useMemo(() => {
+    if (!nextAlarm) return 'Create one strict AI alarm to start a wake streak.';
+    if (nextAlarm.minutesUntil < 420) return 'Wind down soon. Strict challenges work best with enough sleep.';
+    if (completionRate < 80) return 'Try an easier challenge for two mornings, then raise strictness.';
+    return 'Your wake rhythm looks strong. Keep tomorrow within 30 minutes of this time.';
+  }, [completionRate, nextAlarm]);
+
+  const groupedAlarms = useMemo(() => {
+    const active = alarms.filter((alarm) => alarm.isActive);
+    const paused = alarms.filter((alarm) => !alarm.isActive);
+    return [
+      ...(active.length ? [{ id: 'active-group', type: 'heading', title: 'Active Alarms' }, ...active] : []),
+      ...(paused.length ? [{ id: 'paused-group', type: 'heading', title: 'Paused' }, ...paused] : []),
+    ];
+  }, [alarms]);
+
+  const persistAlarms = async (nextAlarms) => {
+    setAlarms(nextAlarms);
+    await saveAlarms(nextAlarms);
+  };
+
+  const toggleAlarm = async (id) => {
+    const currentAlarm = alarms.find((alarm) => alarm.id === id);
+    const toggled = { ...currentAlarm, isActive: !currentAlarm.isActive };
+    const scheduledAlarm = await rescheduleAlarm(currentAlarm, toggled);
+    const nextAlarms = alarms.map((alarm) => (alarm.id === id ? scheduledAlarm : alarm));
+    await persistAlarms(nextAlarms);
   };
 
   const openSettings = (alarm = null) => {
@@ -44,76 +112,213 @@ export const HomeScreen = () => {
     setEditingAlarm(null);
   };
 
-  const handleSaveAlarm = (payload) => {
-    setAlarms((current) => {
-      if (payload.id) {
-        return current.map((alarm) => (alarm.id === payload.id ? { ...alarm, ...payload } : alarm));
-      }
-      return [{ ...payload, id: Date.now().toString() }, ...current];
-    });
+  const handleSaveAlarm = async (payload) => {
+    const previousAlarm = alarms.find((alarm) => alarm.id === payload.id);
+    const normalized = {
+      ...payload,
+      id: payload.id || Date.now().toString(),
+      challengeId: payload.challengeId || getChallengeByTitle(payload.task).id,
+      completionRate: previousAlarm?.completionRate ?? 100,
+    };
+    const scheduledAlarm = await rescheduleAlarm(previousAlarm, normalized);
+    const nextAlarms = await upsertAlarm(alarms, scheduledAlarm);
+    setAlarms(nextAlarms);
     closeSettings();
   };
 
-  const handleRequestPermission = () => {
-    setPermissionStatus('Requested (mock)');
+  const handleDeleteAlarm = async (alarm) => {
+    const nextAlarms = await deleteAlarm(alarms, alarm.id);
+    await rescheduleAlarm(alarm, { ...alarm, isActive: false });
+    setAlarms(nextAlarms);
   };
 
+  const handleDuplicateAlarm = async (alarm) => {
+    const copy = {
+      ...alarm,
+      id: Date.now().toString(),
+      label: `${alarm.label || 'Alarm'} Copy`,
+      notificationId: undefined,
+      notificationIds: undefined,
+    };
+    const scheduledCopy = await rescheduleAlarm(null, copy);
+    const nextAlarms = await upsertAlarm(alarms, scheduledCopy);
+    setAlarms(nextAlarms);
+  };
+
+  const handleLongPress = (alarm) => {
+    Alert.alert(alarm.label || 'Alarm', 'Quick actions', [
+      { text: 'Duplicate', onPress: () => handleDuplicateAlarm(alarm) },
+      { text: 'Delete', style: 'destructive', onPress: () => handleDeleteAlarm(alarm) },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const handleRequestPermission = async () => {
+    const status = await requestNotificationPermissions();
+    setPermissionStatus(status);
+  };
+
+  const renderRightActions = (alarm) => (
+    <View style={styles.swipeActions}>
+      <RectButton style={[styles.swipeButton, styles.duplicateButton]} onPress={() => handleDuplicateAlarm(alarm)}>
+        <Ionicons name="copy-outline" size={20} color={colors.white} />
+      </RectButton>
+      <RectButton style={[styles.swipeButton, styles.deleteButton]} onPress={() => handleDeleteAlarm(alarm)}>
+        <Ionicons name="trash-outline" size={20} color={colors.white} />
+      </RectButton>
+    </View>
+  );
+
+  const renderHeader = () => (
+    <Animated.View entering={FadeInDown.duration(450)} style={styles.dashboard}>
+      <View style={styles.nextAlarmCard}>
+        <View style={styles.nextAlarmTopRow}>
+          <View>
+            <Text style={styles.darkStatLabel}>Next Alarm</Text>
+            <Text style={styles.nextAlarmText}>
+              {nextAlarm ? `${nextAlarm.time} ${nextAlarm.period}` : 'No alarm'}
+            </Text>
+          </View>
+          <View style={styles.ringBadge}>
+            <Ionicons name="radio-button-on" size={20} color={colors.white} />
+          </View>
+        </View>
+        <View style={styles.nextAlarmBottomRow}>
+          <Text style={styles.nextAlarmSubtext}>
+            {nextAlarm ? nextAlarm.label : 'Tap + to schedule'}
+          </Text>
+          {nextAlarm ? <Text style={styles.nextAlarmChip}>in {formatDuration(nextAlarm.minutesUntil)}</Text> : null}
+        </View>
+      </View>
+
+      <View style={styles.statRow}>
+        <View style={styles.statCard}>
+          <View style={styles.statIconShell}>
+            <Ionicons name="flame" size={18} color={colors.primary} />
+          </View>
+          <Text style={styles.statValue}>{wakeStats?.wakeStreak ?? 0}d</Text>
+          <Text style={styles.statLabel}>Wake Streak</Text>
+        </View>
+        <View style={styles.statCard}>
+          <View style={styles.statIconShell}>
+            <Ionicons name="checkmark-done" size={18} color={colors.primary} />
+          </View>
+          <Text style={styles.statValue}>{completionRate}%</Text>
+          <Text style={styles.statLabel}>Completion Rate</Text>
+        </View>
+      </View>
+
+      <View style={styles.recommendationCard}>
+        <Ionicons name="sparkles" size={18} color={colors.primary} />
+        <Text style={styles.recommendationText}>{recommendations}</Text>
+      </View>
+    </Animated.View>
+  );
+
   const renderAlarmCard = ({ item }) => {
+    if (item.type === 'heading') {
+      return <Text style={styles.groupHeading}>{item.title}</Text>;
+    }
+
     const isActive = item.isActive;
-    const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-    const activeDays = item.repeatDays || ['M', 'W', 'F'];
+    const activeDays = item.repeatDays || [];
+    const isExpanded = expandedAlarmId === item.id;
+    const challenge = getChallengeById(item.challengeId);
+    const difficulty = item.difficulty || challenge.difficulty;
 
     return (
-      <TouchableOpacity
-        style={[styles.alarmCard, !isActive && styles.alarmCardInactive]}
-        activeOpacity={0.8}
-        onPress={() => openSettings(item)}
-      >
-        <View style={styles.cardHeader}>
-          <View style={styles.headingContainer}>
-            <Text style={[styles.alarmHeading, !isActive && styles.inactiveText]}>
-              {item.label || 'Untitled Alarm'}
-            </Text>
-            <View style={styles.dayIndicatorRow}>
-              {days.map((day, index) => {
-                const isDayActive = activeDays.includes(day);
-                return (
-                  <Text
-                    key={`${day}-${index}`}
-                    style={[
-                      styles.dayTinyText,
-                      isDayActive && isActive ? styles.dayTinyTextActive : styles.dayTinyTextInactive,
-                    ]}
-                  >
-                    {day}
+      <Swipeable renderRightActions={() => renderRightActions(item)} overshootRight={false}>
+        <Animated.View layout={Layout.springify().damping(18)}>
+          <TouchableOpacity
+            style={[styles.alarmCard, !isActive && styles.alarmCardInactive]}
+            activeOpacity={0.85}
+            onPress={() => setExpandedAlarmId(isExpanded ? null : item.id)}
+            onLongPress={() => handleLongPress(item)}
+          >
+            <View style={styles.cardHeader}>
+              <View style={styles.headingContainer}>
+                <View style={styles.alarmTitleRow}>
+                  <View style={[styles.statusDot, isActive && styles.statusDotActive]} />
+                  <Text style={[styles.alarmHeading, !isActive && styles.inactiveText]}>
+                    {item.label || 'Untitled Alarm'}
                   </Text>
-                );
-              })}
+                </View>
+                <View style={styles.dayIndicatorRow}>
+                  {DAYS.map((day) => {
+                    const isDayActive = activeDays.includes(day);
+                    return (
+                      <Text
+                        key={day}
+                        style={[
+                          styles.dayTinyText,
+                          isDayActive && isActive ? styles.dayTinyTextActive : styles.dayTinyTextInactive,
+                        ]}
+                      >
+                        {day.charAt(0)}
+                      </Text>
+                    );
+                  })}
+                </View>
+              </View>
+
+              <Switch
+                trackColor={{ false: colors.dot, true: colors.primary }}
+                thumbColor={colors.white}
+                ios_backgroundColor={colors.dot}
+                onValueChange={() => toggleAlarm(item.id)}
+                value={isActive}
+              />
             </View>
-          </View>
 
-          <Switch
-            trackColor={{ false: colors.dot, true: colors.primary }}
-            thumbColor={colors.white}
-            ios_backgroundColor={colors.dot}
-            onValueChange={() => toggleAlarm(item.id)}
-            value={isActive}
-          />
-        </View>
+            <View style={styles.timeRow}>
+              <Text style={[styles.timeText, !isActive && styles.inactiveText]}>{item.time}</Text>
+              <Text style={[styles.periodText, !isActive && styles.inactiveText]}>{item.period}</Text>
+            </View>
+            <Text style={[styles.alarmSubline, !isActive && styles.inactiveText]}>
+              {challenge.aiType} verification
+            </Text>
 
-        <View style={styles.timeRow}>
-          <Text style={[styles.timeText, !isActive && styles.inactiveText]}>{item.time}</Text>
-          <Text style={[styles.periodText, !isActive && styles.inactiveText]}>{item.period}</Text>
-        </View>
+            <View style={[styles.cardFooter, !isActive && styles.cardFooterInactive]}>
+              <View style={[styles.taskBadge, !isActive && styles.taskBadgeInactive]}>
+                <Ionicons name={challenge.icon} size={14} color={isActive ? colors.primary : colors.text.muted} />
+                <Text style={[styles.taskText, !isActive && styles.inactiveText]}>{item.task}</Text>
+              </View>
+              <View style={[styles.difficultyBadge, { borderColor: difficultyColor[difficulty] || colors.border }]}>
+                <Text style={[styles.difficultyText, { color: difficultyColor[difficulty] || colors.text.secondary }]}>
+                  {difficulty}
+                </Text>
+              </View>
+              <Ionicons
+                name={isExpanded ? 'chevron-up' : 'chevron-forward'}
+                size={18}
+                color={colors.border}
+                style={styles.cardChevron}
+              />
+            </View>
 
-        <View style={[styles.cardFooter, !isActive && styles.cardFooterInactive]}>
-          <View style={[styles.taskBadge, !isActive && styles.taskBadgeInactive]}>
-            <Ionicons name="rocket-sharp" size={14} color={isActive ? colors.primary : colors.text.muted} />
-            <Text style={[styles.taskText, !isActive && styles.inactiveText]}>{item.task}</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.border} style={styles.cardChevron} />
-        </View>
-      </TouchableOpacity>
+            {isExpanded ? (
+              <Animated.View entering={FadeInDown.duration(200)} style={styles.expandedPanel}>
+                <View style={styles.expandedMetric}>
+                  <Text style={styles.expandedLabel}>AI Type</Text>
+                  <Text style={styles.expandedValue}>{challenge.aiType}</Text>
+                </View>
+                <View style={styles.expandedMetric}>
+                  <Text style={styles.expandedLabel}>Strictness</Text>
+                  <Text style={styles.expandedValue}>{item.antiCheatStrictness || 'Strict'}</Text>
+                </View>
+                <View style={styles.expandedMetric}>
+                  <Text style={styles.expandedLabel}>Rate</Text>
+                  <Text style={styles.expandedValue}>{item.completionRate ?? 100}%</Text>
+                </View>
+                <TouchableOpacity style={styles.editButton} onPress={() => openSettings(item)}>
+                  <Ionicons name="create-outline" size={16} color={colors.white} />
+                  <Text style={styles.editButtonText}>Edit Alarm</Text>
+                </TouchableOpacity>
+              </Animated.View>
+            ) : null}
+          </TouchableOpacity>
+        </Animated.View>
+      </Swipeable>
     );
   };
 
@@ -128,9 +333,10 @@ export const HomeScreen = () => {
         />
 
         <FlatList
-          data={alarms}
+          data={groupedAlarms}
           keyExtractor={(item) => item.id}
           renderItem={renderAlarmCard}
+          ListHeaderComponent={renderHeader}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
         />
@@ -155,29 +361,160 @@ export const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   safeArea: { flex: 1 },
+  listContent: { paddingHorizontal: spacing.sm, paddingBottom: 120, paddingTop: spacing.sm },
+  dashboard: { marginBottom: spacing.md },
 
-  listContent: { paddingHorizontal: spacing.md, paddingBottom: 120, paddingTop: spacing.sm },
+  nextAlarmCard: {
+    backgroundColor: '#1C1C1C',
+    borderRadius: 28,
+    padding: 24,
+    marginBottom: spacing.md,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 8,
+    overflow: 'hidden',
+  },
+  nextAlarmTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  darkStatLabel: {
+    fontFamily: typography.family.bold,
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.4)',
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+  },
+  ringBadge: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+  },
+  nextAlarmText: {
+    fontFamily: typography.family.extraBold,
+    fontSize: 42,
+    color: colors.white,
+    marginTop: 2,
+    letterSpacing: -0.5,
+  },
+  nextAlarmBottomRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    marginTop: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+  },
+  nextAlarmSubtext: {
+    fontFamily: typography.family.bold,
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.6)',
+  },
+  nextAlarmChip: {
+    backgroundColor: 'rgba(226, 55, 68, 0.15)',
+    color: colors.primary,
+    fontFamily: typography.family.extraBold,
+    fontSize: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(226, 55, 68, 0.2)',
+  },
+
+  statRow: { flexDirection: 'row', gap: 12, marginBottom: spacing.md },
+  statCard: {
+    flex: 1,
+    backgroundColor: colors.white,
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.02,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  statIconShell: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statValue: {
+    fontFamily: typography.family.extraBold,
+    fontSize: 28,
+    color: colors.text.primary,
+    marginTop: 10,
+    letterSpacing: -0.5,
+  },
+  statLabel: {
+    fontFamily: typography.family.bold,
+    fontSize: 10,
+    color: colors.text.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+    marginTop: 2,
+  },
+
+  recommendationCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+  },
+  recommendationText: {
+    flex: 1,
+    fontFamily: typography.family.bold,
+    fontSize: 13,
+    color: '#475569',
+    lineHeight: 18,
+  },
+
+  groupHeading: {
+    fontFamily: typography.family.extraBold,
+    fontSize: 15,
+    color: colors.text.primary,
+    marginBottom: 12,
+    marginTop: 4,
+  },
 
   alarmCard: {
     backgroundColor: colors.white,
-    marginBottom: spacing.md,
-    padding: spacing.lg,
+    marginBottom: spacing.sm,
+    padding: spacing.md,
     borderRadius: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.05,
-    shadowRadius: 20,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.04,
+    shadowRadius: 16,
+    elevation: 3,
     borderWidth: 1,
-    borderColor: '#F0F0F0',
+    borderColor: '#F5F5F7',
   },
   alarmCardInactive: {
-    backgroundColor: colors.background,
+    backgroundColor: '#FAFAFA',
     borderColor: 'transparent',
-    borderWidth: 0,
-    elevation: 0,
-    shadowOpacity: 0,
-    shadowRadius: 0,
+    opacity: 0.7,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -186,6 +523,16 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   headingContainer: { flex: 1 },
+  alarmTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.text.muted,
+  },
+  statusDotActive: {
+    backgroundColor: colors.primary,
+  },
   alarmHeading: {
     fontFamily: typography.family.bold,
     fontSize: 17,
@@ -202,7 +549,7 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.extraBold,
     fontSize: 44,
     color: colors.text.primary,
-    letterSpacing: -1,
+    letterSpacing: 0,
   },
   periodText: {
     fontFamily: typography.family.bold,
@@ -212,6 +559,12 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   inactiveText: { color: '#BDBDBD' },
+  alarmSubline: {
+    fontFamily: typography.family.bold,
+    fontSize: 12,
+    color: colors.text.secondary,
+    marginBottom: 4,
+  },
 
   cardFooter: {
     flexDirection: 'row',
@@ -220,6 +573,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#F5F5F5',
+    gap: 8,
   },
   cardFooterInactive: {
     borderTopWidth: 0,
@@ -241,7 +595,47 @@ const styles = StyleSheet.create({
     color: colors.primary,
     marginLeft: 6,
   },
+  difficultyBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  difficultyText: { fontFamily: typography.family.bold, fontSize: 11 },
   cardChevron: { marginLeft: 'auto' },
+  expandedPanel: {
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: '#F5F5F5',
+    gap: 10,
+  },
+  expandedMetric: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  expandedLabel: { fontFamily: typography.family.bold, fontSize: 12, color: colors.text.secondary },
+  expandedValue: { fontFamily: typography.family.bold, fontSize: 12, color: colors.text.primary },
+  editButton: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 6,
+    backgroundColor: colors.text.primary,
+    borderRadius: 14,
+    paddingVertical: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editButtonText: { color: colors.white, fontFamily: typography.family.bold },
+  swipeActions: {
+    flexDirection: 'row',
+    height: '88%',
+    marginBottom: spacing.md,
+  },
+  swipeButton: {
+    width: 58,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  duplicateButton: { backgroundColor: colors.text.primary },
+  deleteButton: { backgroundColor: colors.primary, borderTopRightRadius: 24, borderBottomRightRadius: 24 },
 
   fab: {
     position: 'absolute',
@@ -259,6 +653,4 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 8,
   },
-
-  
 });

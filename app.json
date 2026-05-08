@@ -12,6 +12,11 @@
       "supportsTablet": true
     },
     "android": {
+      "permissions": [
+        "SCHEDULE_EXACT_ALARM",
+        "USE_FULL_SCREEN_INTENT",
+        "POST_NOTIFICATIONS"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -39,6 +44,12 @@
           }
         }
       ],
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "alarms"
+        }
+      ],
       "expo-font",
       [
         "react-native-vision-camera",
@@ -51,6 +62,9 @@
     "experiments": {
       "typedRoutes": false,
       "reactCompiler": true
+    },
+    "extra": {
+      "apiBaseUrl": "http://localhost:4000"
     }
   }
 }

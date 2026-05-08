@@ -1,65 +1,115 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
-import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
-import * as FileSystem from 'expo-file-system';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, Vibration, View } from 'react-native';
+import Constants from 'expo-constants';
 import * as Haptics from 'expo-haptics';
-import Animated, { 
-  FadeInDown, 
-  FadeInUp, 
-  ZoomIn, 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withRepeat, 
-  withTiming, 
-  withSequence 
+import Animated, {
+  FadeInDown,
+  FadeInUp,
+  ZoomIn,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
 } from 'react-native-reanimated';
-import { router } from 'expo-router';
-import { colors, typography, spacing } from '../theme';
+import { router, useLocalSearchParams } from 'expo-router';
+import { colors, spacing, typography } from '../theme';
 import { Card } from '../components/Card';
+import { getChallengeById } from '../data/challengeCatalog';
+import { loadAlarms } from '../services/alarmStorage';
+import { verifyChallengeImage } from '../services/aiVerificationService';
+import { recordWakeResult } from '../services/streakService';
 
-// Mock function to simulate backend AI verification
-const verifyWakeUpTask = async (base64Image) => {
-  console.log('Sending image to AI backend...');
-  await new Promise(resolve => setTimeout(resolve, 2500)); // Simulate latency
-  
-  const success = Math.random() > 0.2; 
-  return {
-    success,
-    message: success ? "Object Verified!" : "Object not recognized. Please scan again."
-  };
+const isExpoGo = Constants.appOwnership === 'expo';
+
+const getVisionCamera = () => {
+  try {
+    return require('react-native-vision-camera');
+  } catch (error) {
+    console.warn('Vision Camera is unavailable in this runtime.', error);
+    return null;
+  }
 };
 
-export const WakeUpScreen = () => {
+const isFreshCapture = (photo) => {
+  const createdAt = photo?.metadata?.DateTimeOriginal || photo?.metadata?.DateTimeDigitized;
+  if (!createdAt) return true;
+
+  const capturedAt = new Date(createdAt).getTime();
+  if (Number.isNaN(capturedAt)) return true;
+
+  return Date.now() - capturedAt < 30000;
+};
+
+const ExpoGoFallback = () => (
+  <View style={styles.container}>
+    <Card style={styles.unsupportedCard}>
+      <Text style={styles.instructionText}>Camera Runtime</Text>
+      <Text style={styles.targetObject}>Development Build Required</Text>
+      <Text style={styles.unsupportedText}>
+        Vision Camera is not supported inside Expo Go. Run SnapWake with a development build using expo run:android.
+      </Text>
+      <TouchableOpacity
+        style={styles.fallbackButton}
+        onPress={() => {
+          Vibration.cancel();
+          router.replace('/(tabs)/home');
+        }}
+      >
+        <Text style={styles.fallbackButtonText}>Back to Alarms</Text>
+      </TouchableOpacity>
+    </Card>
+  </View>
+);
+
+const VisionWakeUpExperience = () => {
+  const visionCamera = getVisionCamera();
+  const Camera = visionCamera?.Camera;
+  const useCameraDevice = visionCamera?.useCameraDevice;
+  const useCameraPermission = visionCamera?.useCameraPermission;
+
   const camera = useRef(null);
+  const params = useLocalSearchParams();
+  const [alarm, setAlarm] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [statusMessage, setStatusMessage] = useState(null);
-  
-  // Animation Values
+
   const scanLineY = useSharedValue(0);
-  
-  const device = useCameraDevice('back');
-  const { hasPermission, requestPermission } = useCameraPermission();
+
+  const device = useCameraDevice?.('back');
+  const { hasPermission, requestPermission } = useCameraPermission?.() || {};
 
   useEffect(() => {
-    if (!hasPermission) {
+    const hydrateAlarm = async () => {
+      const alarms = await loadAlarms();
+      const selected =
+        alarms.find((item) => item.id === params.alarmId) ||
+        alarms.find((item) => item.isActive) ||
+        alarms[0];
+      setAlarm(selected);
+    };
+
+    hydrateAlarm();
+  }, [params.alarmId]);
+
+  useEffect(() => {
+    if (hasPermission === false) {
       requestPermission();
     }
-  }, [hasPermission]);
+  }, [hasPermission, requestPermission]);
 
-  // Scanning line animation loop
   useEffect(() => {
     if (isProcessing) {
       scanLineY.value = withRepeat(
-        withSequence(
-          withTiming(1, { duration: 1500 }),
-          withTiming(0, { duration: 1500 })
-        ),
+        withSequence(withTiming(1, { duration: 1500 }), withTiming(0, { duration: 1500 })),
         -1
       );
     } else {
       scanLineY.value = 0;
     }
-  }, [isProcessing]);
+  }, [isProcessing, scanLineY]);
+
+  const challenge = useMemo(() => getChallengeById(alarm?.challengeId), [alarm?.challengeId]);
 
   const animatedScanLine = useAnimatedStyle(() => ({
     top: `${scanLineY.value * 100}%`,
@@ -67,52 +117,71 @@ export const WakeUpScreen = () => {
   }));
 
   const handleCapture = async () => {
-    if (camera.current == null || isProcessing) return;
+    if (camera.current == null || isProcessing || !alarm) return;
 
     try {
-      // Sensory Feedback: Initial click
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      
+
       setIsProcessing(true);
-      setStatusMessage("Capturing...");
-      
-      // Capture the photo
-      const photo = await camera.current.takePhoto({ 
+      setStatusMessage('Capturing live frame...');
+
+      const photo = await camera.current.takePhoto({
         flash: 'off',
-        enableShutterSound: true 
-      });
-      
-      setStatusMessage("Analyzing Frame...");
-      const base64 = await FileSystem.readAsStringAsync(photo.path, {
-        encoding: FileSystem.EncodingType.Base64,
+        enableShutterSound: true,
+        enableAutoStabilization: true,
       });
 
-      // Send to mock backend
-      setStatusMessage("Analyzing with AI...");
-      const result = await verifyWakeUpTask(base64);
+      if (!isFreshCapture(photo)) {
+        throw new Error('Capture is too old. Use the live camera frame.');
+      }
+
+      setStatusMessage('Checking anti-cheat signals...');
+      const tooDark = photo.width < 24 || photo.height < 24;
+      if (tooDark) {
+        throw new Error('Frame is invalid. Point the camera at the challenge target.');
+      }
+
+      setStatusMessage('Uploading to AI backend...');
+      const result = await verifyChallengeImage({ photo, alarm, challenge });
 
       if (result.success) {
-        // Sensory Feedback: Success vibration
+        Vibration.cancel();
+        await recordWakeResult({
+          alarmId: alarm.id,
+          challengeId: challenge.id,
+          success: true,
+          confidence: result.confidence,
+        });
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        setStatusMessage(result.message);
-        setTimeout(() => router.replace('/home'), 1500);
-      } else {
-        // Sensory Feedback: Error vibration
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        setStatusMessage(result.message);
-        setTimeout(() => {
-          setIsProcessing(false);
-          setStatusMessage(null);
-        }, 3000);
+        setStatusMessage(result.message || 'Object verified. Alarm dismissed.');
+        setTimeout(() => router.replace('/(tabs)/home'), 1200);
+        return;
       }
-      
+
+      await recordWakeResult({
+        alarmId: alarm.id,
+        challengeId: challenge.id,
+        success: false,
+        confidence: result.confidence,
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setStatusMessage(result.message || 'Target not verified. Try again.');
+      setTimeout(() => {
+        setIsProcessing(false);
+        setStatusMessage(null);
+      }, 2600);
     } catch (error) {
       console.error('Capture Error:', error);
-      Alert.alert("Error", "Failed to process photo. Please try again.");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Verification Failed', error.message || 'Failed to process photo. Please try again.');
       setIsProcessing(false);
       setStatusMessage(null);
     }
   };
+
+  if (!visionCamera || !Camera) {
+    return <ExpoGoFallback />;
+  }
 
   if (!hasPermission) {
     return (
@@ -133,30 +202,21 @@ export const WakeUpScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* 1. The Raw Camera View */}
-      <Camera
-        ref={camera}
-        style={StyleSheet.absoluteFill}
-        device={device}
-        isActive={true} 
-        photo={true}
-      />
-      
-      {/* Scanning Line Overlay */}
+      <Camera ref={camera} style={StyleSheet.absoluteFill} device={device} isActive photo />
+
       <Animated.View style={[styles.scanLine, animatedScanLine]} />
 
-      <Animated.View 
-        entering={FadeInUp.delay(300).duration(800)} 
-        style={styles.overlayContainer}
-      >
+      <Animated.View entering={FadeInUp.delay(300).duration(800)} style={styles.overlayContainer}>
         <Card style={styles.targetCard}>
           <Text style={styles.instructionText}>Verification Target</Text>
-          <Text style={styles.targetObject}>Scan Coffee Mug</Text>
-          
+          <Text style={styles.targetObject}>{challenge.title}</Text>
+          <Text style={styles.targetMeta}>
+            {challenge.aiType} - {alarm?.antiCheatStrictness || 'Strict'} mode
+          </Text>
+
           {statusMessage && (
             <Animated.View entering={ZoomIn} style={styles.statusBadge}>
-              {/* Spinner only shows during processing, not results */}
-              {isProcessing && !statusMessage.includes("Verified") && !statusMessage.includes("recognized") && (
+              {isProcessing && !statusMessage.includes('verified') && !statusMessage.includes('Try again') && (
                 <ActivityIndicator size="small" color={colors.primary} style={{ marginRight: 8 }} />
               )}
               <Text style={styles.statusBadgeText}>{statusMessage}</Text>
@@ -165,12 +225,9 @@ export const WakeUpScreen = () => {
         </Card>
       </Animated.View>
 
-      <Animated.View 
-        entering={FadeInDown.delay(500).duration(800)} 
-        style={styles.bottomContainer}
-      >
-        <TouchableOpacity 
-          style={[styles.captureButton, isProcessing && styles.buttonDisabled]} 
+      <Animated.View entering={FadeInDown.delay(500).duration(800)} style={styles.bottomContainer}>
+        <TouchableOpacity
+          style={[styles.captureButton, isProcessing && styles.buttonDisabled]}
           onPress={handleCapture}
           disabled={isProcessing}
         >
@@ -181,6 +238,18 @@ export const WakeUpScreen = () => {
       </Animated.View>
     </View>
   );
+};
+
+export const WakeUpScreen = () => {
+  useEffect(() => {
+    return () => Vibration.cancel();
+  }, []);
+
+  if (isExpoGo) {
+    return <ExpoGoFallback />;
+  }
+
+  return <VisionWakeUpExperience />;
 };
 
 const styles = StyleSheet.create({
@@ -235,6 +304,14 @@ const styles = StyleSheet.create({
     fontSize: typography.size.lg,
     color: colors.primary,
     marginTop: spacing.xs,
+    textAlign: 'center',
+  },
+  targetMeta: {
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.xs,
+    color: colors.text.secondary,
+    marginTop: 6,
+    textAlign: 'center',
   },
   statusBadge: {
     flexDirection: 'row',
@@ -278,5 +355,5 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.5,
-  }
+  },
 });
