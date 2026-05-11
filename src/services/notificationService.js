@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
-import { to24Hour } from './alarmRuntime';
+import { getNextAlarmDate, to24Hour } from './alarmRuntime';
 
 const isExpoGo = Constants.appOwnership === 'expo';
 
@@ -63,14 +63,14 @@ export const scheduleAlarmNotification = async (alarm) => {
 
   const { hour, minute } = to24Hour(alarm.time, alarm.period);
   const repeatDays = alarm.repeatDays || [];
-  const calendarType = Notifications.SchedulableTriggerInputTypes?.CALENDAR || 'calendar';
+  const dateType = Notifications.SchedulableTriggerInputTypes?.DATE || 'date';
+  const weeklyType = Notifications.SchedulableTriggerInputTypes?.WEEKLY || 'weekly';
 
   if (Platform.OS === 'android') {
     try {
       await Notifications.setNotificationChannelAsync('alarm-channel', {
         name: 'SnapWake Alarms',
         importance: Notifications.AndroidImportance?.MAX ?? 5,
-        sound: 'default',
         vibrationPattern: [0, 700, 250, 700, 250, 1200],
         enableVibrate: true,
         lockscreenVisibility: Notifications.AndroidNotificationVisibility?.PUBLIC,
@@ -87,7 +87,7 @@ export const scheduleAlarmNotification = async (alarm) => {
         body: `Time to wake up. Complete "${alarm.task}" to dismiss.`,
         categoryIdentifier: 'alarm',
         data: { alarmId: alarm.id, challengeId: alarm.challengeId },
-        sound: alarm.ringtone === 'Silent' ? false : 'default',
+        sound: alarm.ringtone === 'Silent' ? false : true,
         priority: Notifications.AndroidNotificationPriority?.MAX,
       },
       trigger,
@@ -97,7 +97,7 @@ export const scheduleAlarmNotification = async (alarm) => {
     return Promise.all(
       repeatDays.map((day) =>
         scheduleOne({
-          type: calendarType,
+          type: weeklyType,
           weekday: weekdayMap[day],
           hour,
           minute,
@@ -110,10 +110,8 @@ export const scheduleAlarmNotification = async (alarm) => {
 
   return [
     await scheduleOne({
-      type: calendarType,
-      hour,
-      minute,
-      repeats: false,
+      type: dateType,
+      date: getNextAlarmDate(alarm),
       channelId: 'alarm-channel',
     }),
   ];

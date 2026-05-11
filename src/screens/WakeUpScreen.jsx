@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, Vibration, View } from 'react-native';
-import Constants from 'expo-constants';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, Vibration, View } from 'react-native';
 import Animated, {
   FadeInDown,
   FadeInUp,
@@ -12,24 +13,12 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { router, useLocalSearchParams } from 'expo-router';
-import { colors, spacing, typography } from '../theme';
 import { Card } from '../components/Card';
 import { getChallengeById } from '../data/challengeCatalog';
-import { loadAlarms } from '../services/alarmStorage';
 import { verifyChallengeImage } from '../services/aiVerificationService';
+import { loadAlarms } from '../services/alarmStorage';
 import { recordWakeResult } from '../services/streakService';
-
-const isExpoGo = Constants.appOwnership === 'expo';
-
-const getVisionCamera = () => {
-  try {
-    return require('react-native-vision-camera');
-  } catch (error) {
-    console.warn('Vision Camera is unavailable in this runtime.', error);
-    return null;
-  }
-};
+import { colors, spacing, typography } from '../theme';
 
 const isFreshCapture = (photo) => {
   const createdAt = photo?.metadata?.DateTimeOriginal || photo?.metadata?.DateTimeDigitized;
@@ -41,13 +30,13 @@ const isFreshCapture = (photo) => {
   return Date.now() - capturedAt < 30000;
 };
 
-const ExpoGoFallback = () => (
+const CameraUnavailableFallback = () => (
   <View style={styles.container}>
     <Card style={styles.unsupportedCard}>
       <Text style={styles.instructionText}>Camera Runtime</Text>
-      <Text style={styles.targetObject}>Development Build Required</Text>
+      <Text style={styles.targetObject}>Camera Unavailable</Text>
       <Text style={styles.unsupportedText}>
-        Vision Camera is not supported inside Expo Go. Run SnapWake with a development build using expo run:android.
+        We could not initialize the camera. Please check permissions and try again.
       </Text>
       <TouchableOpacity
         style={styles.fallbackButton}
@@ -63,11 +52,6 @@ const ExpoGoFallback = () => (
 );
 
 const VisionWakeUpExperience = () => {
-  const visionCamera = getVisionCamera();
-  const Camera = visionCamera?.Camera;
-  const useCameraDevice = visionCamera?.useCameraDevice;
-  const useCameraPermission = visionCamera?.useCameraPermission;
-
   const camera = useRef(null);
   const params = useLocalSearchParams();
   const [alarm, setAlarm] = useState(null);
@@ -76,8 +60,8 @@ const VisionWakeUpExperience = () => {
 
   const scanLineY = useSharedValue(0);
 
-  const device = useCameraDevice?.('back');
-  const { hasPermission, requestPermission } = useCameraPermission?.() || {};
+  const [permission, requestPermission] = useCameraPermissions();
+  const hasPermission = permission?.granted;
 
   useEffect(() => {
     const hydrateAlarm = async () => {
@@ -125,24 +109,31 @@ const VisionWakeUpExperience = () => {
       setIsProcessing(true);
       setStatusMessage('Capturing live frame...');
 
-      const photo = await camera.current.takePhoto({
-        flash: 'off',
-        enableShutterSound: true,
-        enableAutoStabilization: true,
+      const photo = await camera.current.takePictureAsync({
+        quality: 0.9,
+        exif: true,
+        skipProcessing: true,
       });
 
-      if (!isFreshCapture(photo)) {
+      const normalizedPhoto = {
+        path: photo.uri,
+        width: photo.width,
+        height: photo.height,
+        metadata: photo.exif,
+      };
+
+      if (!isFreshCapture(normalizedPhoto)) {
         throw new Error('Capture is too old. Use the live camera frame.');
       }
 
       setStatusMessage('Checking anti-cheat signals...');
-      const tooDark = photo.width < 24 || photo.height < 24;
+      const tooDark = normalizedPhoto.width < 24 || normalizedPhoto.height < 24;
       if (tooDark) {
         throw new Error('Frame is invalid. Point the camera at the challenge target.');
       }
 
       setStatusMessage('Uploading to AI backend...');
-      const result = await verifyChallengeImage({ photo, alarm, challenge });
+      const result = await verifyChallengeImage({ photo: normalizedPhoto, alarm, challenge });
 
       if (result.success) {
         Vibration.cancel();
@@ -179,11 +170,11 @@ const VisionWakeUpExperience = () => {
     }
   };
 
-  if (!visionCamera || !Camera) {
-    return <ExpoGoFallback />;
-  }
-
   if (!hasPermission) {
+    if (permission?.status === 'denied') {
+      return <CameraUnavailableFallback />;
+    }
+
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -192,17 +183,9 @@ const VisionWakeUpExperience = () => {
     );
   }
 
-  if (device == null) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>No Camera Device Found</Text>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
-      <Camera ref={camera} style={StyleSheet.absoluteFill} device={device} isActive photo />
+      <CameraView ref={camera} style={StyleSheet.absoluteFill} facing="back" />
 
       <Animated.View style={[styles.scanLine, animatedScanLine]} />
 
@@ -244,10 +227,6 @@ export const WakeUpScreen = () => {
   useEffect(() => {
     return () => Vibration.cancel();
   }, []);
-
-  if (isExpoGo) {
-    return <ExpoGoFallback />;
-  }
 
   return <VisionWakeUpExperience />;
 };

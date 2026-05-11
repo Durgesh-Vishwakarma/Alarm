@@ -9,13 +9,18 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "SnapWake needs access to your camera to verify you are awake."
+      }
     },
     "android": {
+      "usesCleartextTraffic": true,
       "permissions": [
         "SCHEDULE_EXACT_ALARM",
         "USE_FULL_SCREEN_INTENT",
-        "POST_NOTIFICATIONS"
+        "POST_NOTIFICATIONS",
+        "android.permission.CAMERA"
       ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -24,7 +29,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.anonymous.SnapWake"
     },
     "web": {
       "output": "static",
@@ -50,21 +56,15 @@
           "defaultChannel": "alarms"
         }
       ],
-      "expo-font",
-      [
-        "react-native-vision-camera",
-        {
-          "cameraPermissionText": "SnapWake needs access to your camera to verify you are awake.",
-          "enableMicrophonePermission": false
-        }
-      ]
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": false,
       "reactCompiler": true
     },
     "extra": {
-      "apiBaseUrl": "http://localhost:4000"
+      "apiBaseUrl": "http://localhost:4000",
+      "devBackendUrl": "http://192.168.0.231:4000"
     }
   }
 }
