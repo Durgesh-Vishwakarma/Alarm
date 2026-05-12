@@ -1,8 +1,8 @@
-import { z } from 'zod';
+import { z } from "zod";
 
-import { verifyImageForChallenge } from '../ai/gemini.service.js';
-import { runAntiCheatChecks } from '../services/antiCheat.service.js';
-import { logVerificationResult } from '../services/history.service.js';
+import { verifyImageForChallenge } from "../ai/ai.service.js";
+import { runAntiCheatChecks } from "../services/antiCheat.service.js";
+import { logVerificationResult } from "../services/history.service.js";
 
 const bodySchema = z.object({
   alarmId: z.string().min(1),
@@ -11,9 +11,7 @@ const bodySchema = z.object({
 
   capturedAt: z.string().datetime(),
 
-  strictness: z
-    .enum(['Standard', 'Strict', 'Lockdown'])
-    .default('Strict'),
+  strictness: z.enum(["Standard", "Strict", "Lockdown"]).default("Strict"),
 
   targets: z.string().optional(),
 });
@@ -26,7 +24,7 @@ export const verifyWakeChallenge = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        message: 'Image capture is required.',
+        message: "Image capture is required.",
       });
     }
 
@@ -38,7 +36,7 @@ export const verifyWakeChallenge = async (req, res) => {
     if (!parsed.success) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid verification payload.',
+        message: "Invalid verification payload.",
         errors: parsed.error.flatten(),
       });
     }
@@ -51,9 +49,7 @@ export const verifyWakeChallenge = async (req, res) => {
     let targets = [];
 
     try {
-      targets = payload.targets
-        ? JSON.parse(payload.targets)
-        : [];
+      targets = payload.targets ? JSON.parse(payload.targets) : [];
 
       if (!Array.isArray(targets)) {
         targets = [];
@@ -88,13 +84,13 @@ export const verifyWakeChallenge = async (req, res) => {
       return res.status(422).json({
         success: false,
         confidence: 0,
-        provider: 'anti-cheat',
+        provider: "anti-cheat",
         message: antiCheat.reason,
       });
     }
 
     // ------------------------------------------------
-    // Run Gemini verification
+    // Run AI verification
     // ------------------------------------------------
     const result = await verifyImageForChallenge({
       image: req.file.buffer,
@@ -123,36 +119,26 @@ export const verifyWakeChallenge = async (req, res) => {
     // ------------------------------------------------
     // Handle Gemini service failure
     // ------------------------------------------------
-    if (result.provider === 'gemini-error') {
+    if (result.provider === "gemini-error") {
       return res.status(503).json(result);
     }
 
     // ------------------------------------------------
     // Final response
     // ------------------------------------------------
-    return res
-      .status(result.success ? 200 : 422)
-      .json(result);
-
+    return res.status(result.success ? 200 : 422).json(result);
   } catch (error) {
-    console.error(
-      'Verification controller failed:',
-      error
-    );
+    console.error("Verification controller failed:", error);
 
     return res.status(500).json({
       success: false,
       confidence: 0,
-      provider: 'server-error',
+      provider: "server-error",
 
-      message:
-        'Verification server encountered an unexpected error.',
+      message: "Verification server encountered an unexpected error.",
 
       error:
-        process.env.NODE_ENV === 'development'
-          ? error?.message
-          : undefined,
+        process.env.NODE_ENV === "development" ? error?.message : undefined,
     });
   }
 };
-

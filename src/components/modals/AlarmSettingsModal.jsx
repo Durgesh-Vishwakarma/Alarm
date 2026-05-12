@@ -2,13 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useEffect, useState } from 'react';
 import {
-  KeyboardAvoidingView, Modal, Platform, ScrollView,
+  Alert, KeyboardAvoidingView, Modal, Platform, ScrollView,
   StyleSheet, Switch, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import {
   AI_CHALLENGES, DIFFICULTY_LEVELS, STRICTNESS_LEVELS,
-  getChallengeById, getChallengeByTitle,
+  getChallengeById,
 } from '../../data/challengeCatalog';
 import { colors, typography } from '../../theme';
 import WheelTimePicker from '../WheelPicker';
@@ -16,10 +16,34 @@ import WheelTimePicker from '../WheelPicker';
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const RINGTONES = ['System Alarm', 'Default Ringtone', 'Classic Bell', 'Custom Audio', 'Silent'];
 
+const extractTargets = (text = '') => {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s]/g, '')
+    .split(' ')
+    .filter((word) => word.length > 2)
+    .slice(0, 5);
+};
+
+const CUSTOM_CHALLENGE = {
+  id: 'custom',
+  title: 'Custom Challenge',
+  icon: 'create-outline',
+  difficulty: 'Focused',
+  estimatedTime: 'Varies',
+  targets: [],
+  verificationTips: 'Describe exactly what you want the AI to look for.',
+  category: 'Custom',
+  cameraRequired: true,
+};
+
+const ALL_CHALLENGES = [...AI_CHALLENGES, CUSTOM_CHALLENGE];
+
 const getDefaultForm = () => ({
   hour: '06', minute: '00', period: 'AM', label: '',
-  task: AI_CHALLENGES[0].title, challengeId: AI_CHALLENGES[0].id,
-  difficulty: AI_CHALLENGES[0].difficulty, antiCheatStrictness: 'Strict',
+  task: ALL_CHALLENGES[0].title, challengeId: ALL_CHALLENGES[0].id,
+  customTask: '', targets: ALL_CHALLENGES[0].targets || [],
+  difficulty: ALL_CHALLENGES[0].difficulty, antiCheatStrictness: 'Strict',
   randomizeChallenge: true, multiStepChallenge: false,
   ringtone: RINGTONES[0], snoozeMinutes: 5,
   repeatDays: [...DAYS], isActive: true, requiresProof: true,
@@ -52,13 +76,16 @@ const AlarmSettingsModal = ({
     if (!visible) return;
     if (editingAlarm) {
       const { hour, minute } = parseTime(editingAlarm.time);
+      const activeChallenge = ALL_CHALLENGES.find(c => c.id === editingAlarm.challengeId) || ALL_CHALLENGES[0];
       setForm({
         hour, minute,
         period: editingAlarm.period || 'AM',
         label: editingAlarm.label || '',
-        task: editingAlarm.task || getChallengeById(editingAlarm.challengeId).title,
-        challengeId: editingAlarm.challengeId || getChallengeByTitle(editingAlarm.task).id,
-        difficulty: editingAlarm.difficulty || getChallengeById(editingAlarm.challengeId).difficulty,
+        task: editingAlarm.task || activeChallenge.title,
+        challengeId: editingAlarm.challengeId || activeChallenge.id,
+        customTask: editingAlarm.challengeId === 'custom' ? (editingAlarm.task || '') : '',
+        targets: Array.isArray(editingAlarm.targets) ? editingAlarm.targets : (activeChallenge.targets || []),
+        difficulty: editingAlarm.difficulty || activeChallenge.difficulty,
         antiCheatStrictness: editingAlarm.antiCheatStrictness || 'Strict',
         randomizeChallenge: editingAlarm.randomizeChallenge ?? true,
         multiStepChallenge: editingAlarm.multiStepChallenge ?? false,
@@ -87,20 +114,47 @@ const AlarmSettingsModal = ({
 
   const selectChallenge = (c) => {
     Haptics.selectionAsync();
-    setForm((p) => ({ ...p, task: c.title, challengeId: c.id, difficulty: p.difficulty || c.difficulty }));
+    setForm((p) => ({ 
+      ...p, 
+      task: c.title, 
+      challengeId: c.id, 
+      difficulty: c.difficulty,
+      targets: c.targets || [],
+      customTask: c.id === 'custom' ? p.customTask : ''
+    }));
   };
 
   const handleSave = () => {
+    // Validation
+    if (!form.repeatDays.length) {
+      return Alert.alert('Schedule Error', 'Please select at least one repeat day.');
+    }
+    
+    if (form.challengeId === 'custom' && form.customTask.length > 120) {
+      return Alert.alert('Challenge Error', 'Prompt is too long. Keep it under 120 characters.');
+    }
+
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    
+    const finalTask = form.challengeId === 'custom' ? form.customTask.trim() : form.task;
+    const finalTargets = form.challengeId === 'custom' ? extractTargets(form.customTask) : form.targets;
+
     onSave({
       id: editingAlarm?.id,
       time: `${form.hour}:${form.minute}`,
       period: form.period, label: form.label.trim() || 'Alarm',
-      task: form.task, challengeId: form.challengeId,
-      difficulty: form.difficulty, antiCheatStrictness: form.antiCheatStrictness,
-      randomizeChallenge: form.randomizeChallenge, multiStepChallenge: form.multiStepChallenge,
-      ringtone: form.ringtone, snoozeMinutes: Number(form.snoozeMinutes) || 5,
-      repeatDays: form.repeatDays, isActive: form.isActive, requiresProof: form.requiresProof,
+      task: finalTask, 
+      challengeId: form.challengeId,
+      targets: finalTargets,
+      difficulty: form.difficulty, 
+      antiCheatStrictness: form.antiCheatStrictness,
+      randomizeChallenge: form.randomizeChallenge, 
+      multiStepChallenge: form.multiStepChallenge,
+      ringtone: form.ringtone, 
+      snoozeMinutes: Number(form.snoozeMinutes) || 5,
+      repeatDays: form.repeatDays, 
+      isActive: form.isActive, 
+      requiresProof: form.requiresProof,
     });
   };
 
@@ -133,7 +187,7 @@ const AlarmSettingsModal = ({
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollContent}>
 
-            {/* ─── Time Picker ─── */}
+            {/* Time Picker */}
             <Animated.View entering={FadeInDown.duration(500)} style={s.timeCard}>
               <Text style={s.timeLabel}>SET TIME</Text>
               <WheelTimePicker
@@ -150,7 +204,7 @@ const AlarmSettingsModal = ({
               </View>
             </Animated.View>
 
-            {/* ─── Schedule ─── */}
+            {/* Schedule */}
             <Section title="Schedule" icon="calendar-outline" delay={100}>
               <View style={s.dayRow}>
                 {DAYS.map((day) => {
@@ -174,22 +228,42 @@ const AlarmSettingsModal = ({
               </View>
             </Section>
 
-            {/* ─── Wake-up Challenge ─── */}
+            {/* Wake-up Challenge */}
             <Section title="Wake-up Challenge" icon="rocket-outline" delay={200}>
               <View style={s.challengeGrid}>
-                {AI_CHALLENGES.map((c) => {
+                {ALL_CHALLENGES.map((c) => {
                   const on = form.challengeId === c.id;
                   return (
                     <TouchableOpacity key={c.id} style={[s.cBox, on && s.cBoxOn]} onPress={() => selectChallenge(c)} activeOpacity={0.7}>
                       <View style={[s.cIconWrap, on && s.cIconWrapOn]}>
                         <Ionicons name={c.icon} size={20} color={on ? '#fff' : colors.primary} />
                       </View>
-                      <Text numberOfLines={2} style={[s.cTitle, on && s.cTitleOn]}>{c.title}</Text>
-                      <Text style={[s.cMeta, on && s.cMetaOn]}>{c.difficulty} - {c.estimatedTime}</Text>
+                      <Text numberOfLines={1} style={[s.cTitle, on && s.cTitleOn]}>{c.title}</Text>
+                      <View style={s.cBadgeRow}>
+                        <Text style={[s.cBadge, on && s.cBadgeOn]}>{c.verificationTips.split(' ')[0]}</Text>
+                        <Text style={[s.cMeta, on && s.cMetaOn]}>{c.difficulty}</Text>
+                      </View>
                     </TouchableOpacity>
                   );
                 })}
               </View>
+
+              {form.challengeId === 'custom' && (
+                <View style={s.customInputBox}>
+                  <Text style={s.customLabel}>Challenge Description</Text>
+                  <TextInput
+                    style={s.customInput}
+                    placeholder="e.g. Show my blue water bottle"
+                    placeholderTextColor="#bbb"
+                    value={form.customTask}
+                    onChangeText={(v) => set('customTask', v)}
+                    multiline
+                    maxLength={120}
+                    autoCapitalize="sentences"
+                  />
+                  <Text style={s.customTip}>{form.customTask.length}/120 - Gemini AI will verify your description.</Text>
+                </View>
+              )}
 
               <Text style={s.optLabel}>Task Difficulty</Text>
               <View style={s.segRow}>
@@ -202,26 +276,53 @@ const AlarmSettingsModal = ({
 
               <Text style={s.optLabel}>Anti-cheat Strictness</Text>
               <View style={s.segRow}>
-                {STRICTNESS_LEVELS.map((lv) => (
-                  <TouchableOpacity key={lv} style={[s.seg, form.antiCheatStrictness === lv && s.segOn]} onPress={() => { Haptics.selectionAsync(); set('antiCheatStrictness', lv); }}>
-                    <Text style={[s.segTxt, form.antiCheatStrictness === lv && s.segTxtOn]}>{lv}</Text>
-                  </TouchableOpacity>
-                ))}
+                {STRICTNESS_LEVELS.map((lv) => {
+                  const on = form.antiCheatStrictness === lv;
+                  const color = lv === 'Standard' ? '#4CAF50' : lv === 'Strict' ? '#FF9800' : '#E23744';
+                  return (
+                    <TouchableOpacity 
+                      key={lv} 
+                      style={[s.seg, on && { backgroundColor: color, borderColor: color }]} 
+                      onPress={() => { Haptics.selectionAsync(); set('antiCheatStrictness', lv); }}
+                    >
+                      <Text style={[s.segTxt, on && s.segTxtOn]}>{lv}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
+              <Text style={s.strictnessDesc}>
+                {form.antiCheatStrictness === 'Standard' && 'Faster verification, fewer restrictions.'}
+                {form.antiCheatStrictness === 'Strict' && 'Balanced protection against simple cheats.'}
+                {form.antiCheatStrictness === 'Lockdown' && 'Maximum enforcement. Strictly live frames only.'}
+              </Text>
 
-              <ToggleItem label="Require AI Verification" value={form.requiresProof} onChange={(v) => set('requiresProof', v)} icon="shield-checkmark-outline" />
+              <ToggleItem label="Require Camera Verification" value={form.requiresProof} onChange={(v) => set('requiresProof', v)} icon="shield-checkmark-outline" />
               <ToggleItem label="Smart Randomization" value={form.randomizeChallenge} onChange={(v) => set('randomizeChallenge', v)} icon="shuffle-outline" />
               <ToggleItem label="Multi-step Challenge" value={form.multiStepChallenge} onChange={(v) => set('multiStepChallenge', v)} icon="layers-outline" />
 
               <View style={s.aiBox}>
                 <Ionicons name="sparkles" size={18} color={colors.primary} />
-                <Text style={s.aiBoxTxt}>
-                  {getChallengeById(form.challengeId).aiType} - {Math.round(getChallengeById(form.challengeId).confidenceThreshold * 100)}% confidence
-                </Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.aiBoxTitle}>Gemini Flash Verification</Text>
+                  <Text style={s.aiBoxTxt}>
+                    {form.challengeId === 'custom' 
+                      ? 'AI will perform semantic scene analysis on your custom prompt.'
+                      : `AI will verify this challenge using live camera analysis. ${getChallengeById(form.challengeId).verificationTips}`
+                    }
+                  </Text>
+                  <View style={s.targetPreview}>
+                    <Text style={s.targetPreviewLabel}>AI will look for:</Text>
+                    <View style={s.targetList}>
+                      {(form.challengeId === 'custom' ? extractTargets(form.customTask) : form.targets).map((t, idx) => (
+                        <Text key={idx} style={s.targetTag}>- {t}</Text>
+                      ))}
+                    </View>
+                  </View>
+                </View>
               </View>
             </Section>
 
-            {/* ─── Sound & System ─── */}
+            {/* Sound & System */}
             <Section title="Sound & System" icon="settings-outline" delay={300}>
               {/* Ringtone */}
               <Text style={s.optLabel}>Ringtone</Text>
@@ -343,9 +444,12 @@ const s = StyleSheet.create({
   cBoxOn: { backgroundColor: '#1C1C1C', borderColor: colors.primary, shadowColor: colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 4 },
   cIconWrap: { width: 38, height: 38, borderRadius: 12, backgroundColor: colors.primaryLight, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
   cIconWrapOn: { backgroundColor: colors.primary },
-  cTitle: { fontSize: 12, fontFamily: typography.family.bold, color: '#444', textAlign: 'center' },
+  cTitle: { fontSize: 12, fontFamily: typography.family.bold, color: '#444', textAlign: 'center', marginBottom: 4 },
   cTitleOn: { color: '#fff' },
-  cMeta: { fontSize: 10, fontFamily: typography.family.bold, color: '#AAA', marginTop: 3, textAlign: 'center' },
+  cBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  cBadge: { fontSize: 9, fontFamily: typography.family.extraBold, color: colors.primary, backgroundColor: colors.primaryLight, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 5, overflow: 'hidden' },
+  cBadgeOn: { color: '#fff', backgroundColor: 'rgba(255,255,255,0.2)' },
+  cMeta: { fontSize: 10, fontFamily: typography.family.bold, color: '#AAA', textAlign: 'center' },
   cMetaOn: { color: 'rgba(255,255,255,0.6)' },
 
   // Segments
@@ -362,8 +466,22 @@ const s = StyleSheet.create({
   toggleTxt: { fontFamily: typography.family.bold, fontSize: 14, color: colors.text.primary },
 
   // AI Info
-  aiBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.primaryLight, borderRadius: 14, padding: 12, marginTop: 16, borderWidth: 1, borderColor: '#F7DADB' },
-  aiBoxTxt: { flex: 1, fontFamily: typography.family.bold, fontSize: 12, color: colors.text.primary },
+  aiBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: colors.primaryLight, borderRadius: 14, padding: 14, marginTop: 16, borderWidth: 1, borderColor: '#F7DADB' },
+  aiBoxTitle: { fontFamily: typography.family.extraBold, fontSize: 13, color: colors.text.primary, marginBottom: 2 },
+  aiBoxTxt: { fontFamily: typography.family.bold, fontSize: 12, color: '#666', lineHeight: 16, marginBottom: 8 },
+  targetPreview: { borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.05)', paddingTop: 8 },
+  targetPreviewLabel: { fontSize: 10, fontFamily: typography.family.extraBold, color: '#999', textTransform: 'uppercase', marginBottom: 4 },
+  targetList: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  targetTag: { fontSize: 11, fontFamily: typography.family.bold, color: colors.primary },
+
+  // Custom Challenge
+  customInputBox: { marginTop: 12, backgroundColor: '#F8F8F8', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#EEE' },
+  customLabel: { fontSize: 11, fontFamily: typography.family.bold, color: '#999', marginBottom: 8, textTransform: 'uppercase' },
+  customInput: { fontSize: 15, fontFamily: typography.family.bold, color: colors.text.primary, minHeight: 60, textAlignVertical: 'top', padding: 0, marginBottom: 4 },
+  customTip: { fontSize: 10, fontFamily: typography.family.bold, color: '#BBB', marginTop: 4 },
+
+  // Strictness
+  strictnessDesc: { fontSize: 11, fontFamily: typography.family.bold, color: '#888', marginTop: 8, marginLeft: 4 },
 
   // Ringtones
   ringRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

@@ -1,81 +1,154 @@
 import * as FileSystem from 'expo-file-system/legacy';
 
-const STORAGE_FILE = `${FileSystem.documentDirectory}snapwake-alarms.json`;
+/**
+ * SnapWake Production Storage Service
+ * Handles persistence with schema versioning, self-healing, and AI metadata support.
+ */
 
-const DEFAULT_ALARMS = [
+const STORAGE_FILE = `${FileSystem.documentDirectory}snapwake-v2-alarms.json`;
+const ONBOARDING_KEY = 'snapwake-onboarding-complete';
+const STORAGE_VERSION = 2;
+
+// Seed data used only during development
+const SEED_ALARMS = [
   {
-    id: '1',
+    id: 'seed-1',
     time: '06:00',
     period: 'AM',
-    label: 'Morning Workout',
-    task: 'Scan Toothbrush',
+    label: 'Morning Rhythm',
+    challengeTitle: 'Scan Toothbrush',
     challengeId: 'toothbrush',
-    difficulty: 'Focused',
+    targets: ['toothbrush', 'mirror'],
     antiCheatStrictness: 'Strict',
-    repeatDays: ['Mon', 'Wed', 'Fri'],
-    isActive: true,
-    completionRate: 92,
-  },
-  {
-    id: '2',
-    time: '07:30',
-    period: 'AM',
-    label: 'Deep Work',
-    task: 'Capture Sky',
-    challengeId: 'sky',
-    difficulty: 'Easy',
-    antiCheatStrictness: 'Standard',
-    repeatDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
-    isActive: false,
-    completionRate: 76,
-  },
-  {
-    id: '3',
-    time: '08:00',
-    period: 'AM',
-    label: 'Leave for Office',
-    task: 'Capture Running Tap',
-    challengeId: 'running_tap',
-    difficulty: 'Strict',
-    antiCheatStrictness: 'Lockdown',
+    verificationMode: 'AI Semantic Verification',
     repeatDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
     isActive: true,
-    completionRate: 88,
-  },
+    completionRate: 100,
+  }
 ];
 
+/**
+ * Robust ID generator to prevent collisions across rapid creation and imports.
+ */
+const generateId = () => {
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+};
+
+/**
+ * Loads alarms from storage. 
+ * Includes self-healing for corrupted files and legacy data normalization.
+ */
 export const loadAlarms = async () => {
   try {
     const info = await FileSystem.getInfoAsync(STORAGE_FILE);
+    
     if (!info.exists) {
-      await saveAlarms(DEFAULT_ALARMS);
-      return DEFAULT_ALARMS;
+      const initial = __DEV__ ? SEED_ALARMS : [];
+      await saveAlarms(initial);
+      return initial;
     }
 
     const raw = await FileSystem.readAsStringAsync(STORAGE_FILE);
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : DEFAULT_ALARMS;
+    
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch (_parseError) {
+      if (__DEV__) console.warn('[Storage] Corrupted file, resetting data.');
+      await saveAlarms([]);
+      return [];
+    }
+
+    // Handle both legacy (array-only) and versioned (object) formats
+    const alarms = data.version ? data.alarms : data;
+    
+    if (!Array.isArray(alarms)) return [];
+
+    // Normalize and repair data (e.g., mapping old 'task' to 'challengeTitle')
+    return alarms.map((alarm) => ({
+      ...alarm,
+      challengeTitle: alarm.challengeTitle || alarm.task || 'AI Challenge',
+      targets: Array.isArray(alarm.targets) ? alarm.targets : [],
+      antiCheatStrictness: alarm.antiCheatStrictness || 'Standard',
+      verificationMode: alarm.verificationMode || 'AI Verification',
+      completionRate: alarm.completionRate ?? 100,
+    }));
   } catch (error) {
-    console.warn('Failed to load alarms, using defaults.', error);
-    return DEFAULT_ALARMS;
+    if (__DEV__) console.warn('[Storage] Critical load error:', error);
+    return [];
   }
 };
 
+/**
+ * Persists alarms with versioning metadata.
+ */
 export const saveAlarms = async (alarms) => {
-  await FileSystem.writeAsStringAsync(STORAGE_FILE, JSON.stringify(alarms, null, 2));
+  try {
+    const payload = {
+      version: STORAGE_VERSION,
+      alarms,
+      lastSavedAt: new Date().toISOString(),
+    };
+    await FileSystem.writeAsStringAsync(STORAGE_FILE, JSON.stringify(payload, null, 2));
+  } catch (error) {
+    if (__DEV__) console.error('[Storage] Save error:', error);
+  }
 };
 
+/**
+ * High-level upsert for alarm creation/editing.
+ * Ensures AI metadata (targets, strictness) is properly captured.
+ */
 export const upsertAlarm = async (alarms, payload) => {
-  const nextAlarms = payload.id
-    ? alarms.map((alarm) => (alarm.id === payload.id ? { ...alarm, ...payload } : alarm))
-    : [{ ...payload, id: Date.now().toString() }, ...alarms];
+  const now = new Date().toISOString();
+  const existingIndex = alarms.findIndex((alarm) => alarm.id === payload.id);
+  const isEdit = existingIndex >= 0;
+  const id = payload.id || generateId();
+
+  // Normalize naming and ensure AI fields are present
+  const normalizedPayload = {
+    ...payload,
+    id,
+    challengeTitle: payload.challengeTitle || payload.task || 'AI Challenge',
+    targets: Array.isArray(payload.targets) ? payload.targets : [],
+    antiCheatStrictness: payload.antiCheatStrictness || 'Standard',
+    updatedAt: now,
+  };
+
+  const nextAlarms = isEdit
+    ? alarms.map((alarm) => (alarm.id === id ? { ...alarm, ...normalizedPayload } : alarm))
+    : [
+        { 
+          ...normalizedPayload, 
+          createdAt: now
+        }, 
+        ...alarms
+      ];
 
   await saveAlarms(nextAlarms);
   return nextAlarms;
 };
 
+/**
+ * Removes an alarm by ID.
+ */
 export const deleteAlarm = async (alarms, id) => {
   const nextAlarms = alarms.filter((alarm) => alarm.id !== id);
   await saveAlarms(nextAlarms);
   return nextAlarms;
+};
+
+/**
+ * Onboarding Persistence
+ */
+export const setOnboardingComplete = async () => {
+  await FileSystem.writeAsStringAsync(
+    `${FileSystem.documentDirectory}${ONBOARDING_KEY}`, 
+    'true'
+  );
+};
+
+export const checkOnboardingComplete = async () => {
+  const info = await FileSystem.getInfoAsync(`${FileSystem.documentDirectory}${ONBOARDING_KEY}`);
+  return info.exists;
 };

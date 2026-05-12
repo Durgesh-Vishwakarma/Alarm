@@ -6,7 +6,6 @@ const normalizeHost = (value) => value?.replace(/^https?:\/\//, "")?.split(":")?
 
 const extractHosts = (value) => {
   if (!value) return [];
-
   const decoded = decodeURIComponent(String(value));
   const matches = decoded.matchAll(/https?:\/\/([^/:?#]+)(?::\d+)?/g);
   return [...matches].map((match) => match[1]);
@@ -28,7 +27,6 @@ const getMetroHost = () => {
       return host;
     }
   }
-
   return null;
 };
 
@@ -75,38 +73,93 @@ const createVerificationFormData = ({ photo, alarm, challenge }) => {
   formData.append("alarmId", alarm?.id || "manual");
   formData.append("challengeId", challenge.id);
   formData.append("challengeTitle", challenge.title);
-  formData.append("capturedAt", new Date().toISOString());
+  formData.append("capturedAt", photo.capturedAt || new Date().toISOString());
   formData.append("strictness", alarm?.antiCheatStrictness || "Strict");
-  formData.append("targets", JSON.stringify(challenge.targets));
+  
+  // Safe targets stringification
+  const targets = Array.isArray(challenge.targets) ? challenge.targets : [];
+  formData.append("targets", JSON.stringify(targets));
 
   return formData;
 };
 
+const buildResponseError = (result, status) => {
+  const error = new Error(result?.message || `AI verification failed (Status: ${status})`);
+  error.status = status;
+  error.result = result;
+  error.fromBackend = true;
+  return error;
+};
+
+/**
+ * Verifies a challenge image with the AI backend.
+ * Includes production-grade resilience: timeouts, safe parsing, and error differentiation.
+ */
 export const verifyChallengeImage = async ({ photo, alarm, challenge }) => {
   const apiBaseUrls = await getApiBaseUrls();
+  let lastError = null;
 
   for (const apiBaseUrl of apiBaseUrls) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
+
     try {
+      if (__DEV__) {
+        console.log(`[AI] Attempting verification via: ${apiBaseUrl}`);
+      }
+
       const response = await fetch(`${apiBaseUrl}/api/verify`, {
         method: "POST",
         body: createVerificationFormData({ photo, alarm, challenge }),
         headers: {
           Accept: "application/json",
         },
+        signal: controller.signal,
       });
 
-      const result = await response.json();
+      clearTimeout(timeoutId);
+
+      // Safe JSON parsing to prevent crashes on HTML errors
+      let result;
+      const responseText = await response.text();
+      try {
+        result = JSON.parse(responseText);
+      } catch (_error) {
+        throw new Error(`Invalid server response (Status: ${response.status})`);
+      }
+
+      if (response.status === 422 && result) {
+        return result;
+      }
+
       if (!response.ok) {
-        throw new Error(result.message || "AI verification failed");
+        throw buildResponseError(result, response.status);
       }
 
       return result;
     } catch (error) {
-      console.warn(`AI verification failed via ${apiBaseUrl}`, error);
+      clearTimeout(timeoutId);
+      lastError = error;
+
+      if (__DEV__) {
+        console.warn(`[AI] Failure via ${apiBaseUrl}:`, error.message);
+      }
+
+      // Handle specific network errors
+      if (error.name === "AbortError") {
+        lastError = new Error("AI verification timed out. Check your connection.");
+      }
+
+      if (error.fromBackend) {
+        throw error;
+      }
     }
   }
 
+  // If we've exhausted all URLs, throw a specialized error
+  const errorMessage = lastError?.message || "AI backend unreachable";
+  
   throw new Error(
-    `AI backend unreachable. Tried: ${apiBaseUrls.join(", ")}. Backend is running locally, but Android must reach your computer LAN IP. Check Windows Firewall allows port 4000.`
+    `${errorMessage}. Please ensure the SnapWake backend is running and accessible on your network.`
   );
 };

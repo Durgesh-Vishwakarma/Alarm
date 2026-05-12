@@ -61,9 +61,9 @@ ON wake_history(success);
 CREATE TABLE IF NOT EXISTS challenge_results (
   id BIGSERIAL PRIMARY KEY,
 
-  alarm_id TEXT NOT NULL
+  alarm_id TEXT
     REFERENCES alarms(id)
-    ON DELETE CASCADE,
+    ON DELETE SET NULL,
 
   challenge_id TEXT NOT NULL,
 
@@ -125,4 +125,3 @@ CREATE TRIGGER trigger_update_alarms_updated_at
 BEFORE UPDATE ON alarms
 FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();
-

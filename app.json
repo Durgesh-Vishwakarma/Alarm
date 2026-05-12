@@ -56,7 +56,8 @@
           "defaultChannel": "alarms"
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-audio"
     ],
     "experiments": {
       "typedRoutes": false,

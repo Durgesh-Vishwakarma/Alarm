@@ -1,22 +1,49 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useMemo } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { colors, spacing, typography } from '../theme';
 
-const Header = ({ greeting, name, avatarUri, activeCount }) => {
+const getDynamicGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Rise & Verify';
+  if (hour < 17) return 'Stay Focused';
+  if (hour < 21) return 'Evening Energy';
+  return 'Rest & Recharge';
+};
+
+const Header = ({ name, avatarUri, activeCount, streakDays = 0 }) => {
+  const greeting = useMemo(() => getDynamicGreeting(), []);
+
   return (
     <View style={styles.topBar}>
       <View style={styles.profileSection}>
-        <Image source={{ uri: avatarUri }} style={styles.avatar} />
-        <View>
+        <Image
+          source={avatarUri ? { uri: avatarUri } : require('../../assets/images/icon.png')}
+          style={styles.avatar}
+        />
+        <View style={styles.textStack}>
           <Text style={styles.greeting}>{greeting}</Text>
-          <Text style={styles.userName}>{name}</Text>
+          <Text style={styles.userName} numberOfLines={1} ellipsizeMode="tail">
+            {name}
+          </Text>
         </View>
       </View>
+
       <View style={styles.topBarRight}>
-        <View style={styles.countBadge}>
-          <Ionicons name="alarm" size={14} color={colors.primary} />
-          <Text style={styles.countNumber}>{activeCount}</Text>
-          <Text style={styles.countLabel}>Active</Text>
+        <View style={styles.dashboardBadge}>
+          {/* Streak Status */}
+          <View style={styles.statItem}>
+            <Text style={styles.streakEmoji}>🔥</Text>
+            <Text style={styles.statNumber}>{streakDays}</Text>
+          </View>
+
+          <View style={styles.separator} />
+
+          {/* Active Alarms Status */}
+          <View style={styles.statItem}>
+            <Ionicons name="alarm" size={14} color={colors.primary} />
+            <Text style={styles.statNumber}>{activeCount}</Text>
+          </View>
         </View>
       </View>
     </View>
@@ -33,50 +60,59 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
     backgroundColor: colors.background,
   },
-  profileSection: { flexDirection: 'row', alignItems: 'center' },
+  profileSection: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  textStack: { flex: 1, marginRight: spacing.md },
   avatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
     marginRight: 12,
     backgroundColor: colors.dot,
-    borderWidth: 3,
-    borderColor: colors.white,
+    borderWidth: 2,
+    borderColor: 'white',
   },
-  greeting: { fontFamily: typography.family.regular, fontSize: 13, color: colors.text.muted },
+  greeting: {
+    fontFamily: typography.family.bold,
+    fontSize: 10,
+    color: colors.text.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
   userName: {
     fontFamily: typography.family.extraBold,
-    fontSize: 20,
+    fontSize: 18,
     color: colors.primary,
-    letterSpacing: 0,
+    marginTop: -2,
   },
   topBarRight: { alignItems: 'flex-end' },
-  countBadge: {
+  dashboardBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    backgroundColor: colors.white,
-    borderRadius: 18,
-    paddingVertical: 8,
-    paddingHorizontal: 11,
+    backgroundColor: 'rgba(255, 165, 0, 0.04)',
+    borderRadius: 14,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     borderWidth: 1,
-    borderColor: '#F0D7D9',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 2,
+    borderColor: 'rgba(255, 165, 0, 0.12)',
   },
-  countNumber: {
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  statNumber: {
     fontFamily: typography.family.extraBold,
-    fontSize: 16,
+    fontSize: 15,
     color: colors.primary,
-    lineHeight: 17,
   },
-  countLabel: {
-    fontFamily: typography.family.bold,
-    fontSize: 11,
-    color: colors.text.secondary,
+  separator: {
+    width: 1,
+    height: 12,
+    backgroundColor: 'rgba(0,0,0,0.08)',
+    marginHorizontal: 8,
+  },
+  streakEmoji: {
+    fontSize: 13,
   },
 });
 
