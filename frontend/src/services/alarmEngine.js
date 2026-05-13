@@ -9,12 +9,11 @@ import { stopNativeAlarmService } from "./alarmScheduler";
  */
 export const startAlarm = async (
   dueAlarm,
-  { setActiveAlarmId, setWakeSession, setActiveRouteAlarmId },
+  { setActiveAlarmId, setWakeSession },
 ) => {
   try {
     // Update Global State
     setActiveAlarmId(dueAlarm.id);
-    setActiveRouteAlarmId(dueAlarm.id);
 
     setWakeSession({
       ...INITIAL_WAKE_SESSION,
@@ -42,7 +41,6 @@ export const startAlarm = async (
 export const stopAlarm = async ({
   setActiveAlarmId,
   setWakeSession,
-  setActiveRouteAlarmId,
 }) => {
   try {
     await stopNativeAlarmService();
@@ -50,7 +48,6 @@ export const stopAlarm = async ({
 
     // FULL RESET of state to avoid stale data
     setActiveAlarmId(null);
-    setActiveRouteAlarmId(null); // CRITICAL: Reset route tracking
     setWakeSession(INITIAL_WAKE_SESSION);
   } catch (error) {
     console.error("Alarm Engine: Failed to stop alarm:", error);
@@ -60,8 +57,7 @@ export const stopAlarm = async ({
 export const dismissAlarm = async ({
   setActiveAlarmId,
   setWakeSession,
-  setActiveRouteAlarmId,
 }) => {
-  await stopAlarm({ setActiveAlarmId, setWakeSession, setActiveRouteAlarmId });
+  await stopAlarm({ setActiveAlarmId, setWakeSession });
   router.replace("/");
 };

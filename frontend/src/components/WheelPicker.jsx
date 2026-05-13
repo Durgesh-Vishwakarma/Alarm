@@ -1,4 +1,3 @@
-import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useRef } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { typography } from "../theme";
@@ -37,15 +36,8 @@ const WheelColumn = ({ data, selectedValue, onValueChange, width = 76 }) => {
     }
   };
 
-  // Gradient colors derived from the hero card background
-  const gradTop = [theme.heroCard, theme.heroCard + "AA", theme.heroCard + "00"];
-  const gradBot = [theme.heroCard + "00", theme.heroCard + "AA", theme.heroCard];
-
   return (
     <View style={[styles.col, { width, height: PICKER_HEIGHT, backgroundColor: theme.heroCard }]}>
-      <View style={styles.glow} pointerEvents="none" />
-      <View style={[styles.band, { backgroundColor: theme.heroAccent, borderColor: theme.heroNeon + "44" }]} pointerEvents="none" />
-
       <ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
@@ -55,7 +47,6 @@ const WheelColumn = ({ data, selectedValue, onValueChange, width = 76 }) => {
         onMomentumScrollEnd={handleScrollEnd}
         contentContainerStyle={{ paddingVertical: PADDING }}
         nestedScrollEnabled={true}
-        removeClippedSubviews={false}
       >
         {data.map((item, i) => (
           <View key={`${item}-${i}`} style={styles.item}>
@@ -65,9 +56,7 @@ const WheelColumn = ({ data, selectedValue, onValueChange, width = 76 }) => {
           </View>
         ))}
       </ScrollView>
-
-      <LinearGradient colors={gradTop} style={[styles.gradient, { top: 0 }]} pointerEvents="none" />
-      <LinearGradient colors={gradBot} style={[styles.gradient, { bottom: 0 }]} pointerEvents="none" />
+      <View style={[styles.selectionLine, { borderColor: theme.heroNeon + "33" }]} pointerEvents="none" />
     </View>
   );
 };
@@ -93,25 +82,6 @@ export default WheelTimePicker;
 
 const styles = StyleSheet.create({
   col: { overflow: "hidden", position: "relative", borderRadius: 18 },
-  glow: {
-    position: "absolute",
-    top: ITEM_HEIGHT * 2,
-    left: 0,
-    right: 0,
-    height: ITEM_HEIGHT,
-    backgroundColor: "rgba(255,255,255,0.03)",
-    zIndex: 0,
-  },
-  band: {
-    position: "absolute",
-    top: ITEM_HEIGHT * 2,
-    left: 4,
-    right: 4,
-    height: ITEM_HEIGHT,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    zIndex: 10,
-  },
   item: { height: ITEM_HEIGHT, justifyContent: "center", alignItems: "center" },
   txt: {
     fontFamily: typography.family.bold,
@@ -122,6 +92,15 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.extraBold,
     fontSize: 32,
   },
+  selectionLine: {
+    position: "absolute",
+    top: ITEM_HEIGHT * 2,
+    left: 10,
+    right: 10,
+    height: ITEM_HEIGHT,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+  },
   row: { flexDirection: "row", alignItems: "center", justifyContent: "center" },
   sep: {
     fontFamily: typography.family.extraBold,
@@ -129,12 +108,5 @@ const styles = StyleSheet.create({
     marginHorizontal: 2,
     marginBottom: 4,
     opacity: 0.8,
-  },
-  gradient: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    height: ITEM_HEIGHT * 1.8,
-    zIndex: 20,
   },
 });

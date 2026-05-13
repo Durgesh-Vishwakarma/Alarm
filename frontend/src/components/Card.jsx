@@ -14,18 +14,10 @@ export const Card = ({
   const Component = onPress ? TouchableOpacity : View;
 
   // Base card uses theme tokens; variant overrides for special states
-  const variantStyle = variant === "hud"
-    ? { backgroundColor: theme.heroCard, borderColor: theme.heroBorder }
-    : variant === "active"
+  const variantStyle = variant === "active"
     ? { backgroundColor: theme.card, borderColor: theme.primary }
-    : variant === "ringing"
-    ? { backgroundColor: theme.card, borderColor: colors.ringing, borderWidth: 1.5 }
-    : variant === "success"
-    ? { backgroundColor: theme.card, borderColor: colors.success, borderWidth: 1.5 }
     : variant === "danger"
     ? { backgroundColor: theme.card, borderColor: theme.danger, borderWidth: 1.5 }
-    : variant === "failed"
-    ? { backgroundColor: theme.surface, borderColor: theme.cardBorder, opacity: 0.7 }
     : { backgroundColor: theme.card, borderColor: theme.cardBorder };
 
   return (
