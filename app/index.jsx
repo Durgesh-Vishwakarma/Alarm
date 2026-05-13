@@ -8,13 +8,10 @@ import {
     checkOnboardingComplete,
     checkPermissionsComplete,
 } from "../src/services/alarmStorage";
-import { colors } from "../src/theme";
+import { useTheme } from "../src/theme/ThemeContext";
 
-/**
- * Entry Index
- * Handles persistence-based routing between Onboarding and Home.
- */
 export default function Index() {
+  const { theme } = useTheme();
   const [isReady, setIsReady] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [showPermissions, setShowPermissions] = useState(false);
@@ -24,13 +21,11 @@ export default function Index() {
       try {
         const completed = await checkOnboardingComplete();
         setShowOnboarding(!completed);
-
         if (completed) {
           const permissionsComplete = await checkPermissionsComplete();
           setShowPermissions(!permissionsComplete);
         }
       } catch (_error) {
-        // Fallback to onboarding if storage check fails
         setShowOnboarding(true);
         setShowPermissions(false);
       } finally {
@@ -42,15 +37,8 @@ export default function Index() {
 
   if (!isReady) {
     return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: colors.background,
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={{ flex: 1, backgroundColor: theme.bg, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
   }
@@ -58,7 +46,7 @@ export default function Index() {
   if (showOnboarding) {
     return (
       <>
-        <StatusBar style="dark" />
+        <StatusBar style={theme.statusBar} backgroundColor={theme.bg} translucent={false} />
         <OnboardingScreen />
       </>
     );
@@ -67,7 +55,7 @@ export default function Index() {
   if (showPermissions) {
     return (
       <>
-        <StatusBar style="dark" />
+        <StatusBar style={theme.statusBar} backgroundColor={theme.bg} translucent={false} />
         <PermissionsScreen />
       </>
     );

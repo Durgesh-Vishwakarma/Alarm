@@ -1,14 +1,15 @@
-import { StatusBar } from 'expo-status-bar';
-import { WakeUpScreen } from '../src/screens/WakeUpScreen';
+import { StatusBar } from "expo-status-bar";
+import { WakeUpScreen } from "../src/screens/WakeUpScreen";
 
 /**
- * Wake-Up Route Wrapper
- * Optimized for high-intensity dark-mode UI with high-contrast StatusBar.
+ * Wake-Up screen always uses a dark camera UI.
+ * StatusBar is always "light" here so system indicators stay white and visible
+ * against the dark camera background, regardless of the chosen colour theme.
  */
 export default function WakeUpRoute() {
   return (
     <>
-      <StatusBar style="light" />
+      <StatusBar style="light" backgroundColor="transparent" translucent />
       <WakeUpScreen />
     </>
   );

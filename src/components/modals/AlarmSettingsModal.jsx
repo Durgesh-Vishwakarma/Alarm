@@ -1,29 +1,31 @@
-import { Ionicons } from "@expo/vector-icons";
+﻿import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useEffect, useRef, useState } from "react";
 import {
-  Alert,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+    useWindowDimensions,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import {
-  AI_CHALLENGES,
-  DIFFICULTY_LEVELS,
-  STRICTNESS_LEVELS,
-  getChallengeById,
+    AI_CHALLENGES,
+    DIFFICULTY_LEVELS,
+    STRICTNESS_LEVELS,
+    getChallengeById,
 } from "../../data/challengeCatalog";
 import { RINGTONE_OPTIONS } from "../../data/ringtones";
 import { startAlarmSound, stopAlarmSound } from "../../services/soundService";
 import { colors, typography } from "../../theme";
+import { useTheme } from "../../theme/ThemeContext";
 import WheelTimePicker from "../WheelPicker";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -68,16 +70,17 @@ const getDefaultForm = () => ({
   isActive: true,
 });
 
-const Section = ({ title, icon, children, delay = 0 }) => (
+const Section = ({ title, icon, children, delay = 0, accentColor, theme }) => (
   <Animated.View
     entering={FadeInDown.delay(delay).duration(400).springify()}
-    style={s.section}
+    style={[s.section, theme && { backgroundColor: theme.card, borderColor: theme.cardBorder }]}
   >
+    <View style={[s.sectionAccent, { backgroundColor: accentColor || (theme?.primary ?? colors.primary) }]} />
     <View style={s.sectionHeader}>
-      <View style={s.sectionIconWrap}>
-        <Ionicons name={icon} size={16} color={colors.primary} />
+      <View style={[s.sectionIconWrap, { backgroundColor: `${accentColor || (theme?.primary ?? colors.primary)}1A` }]}>
+        <Ionicons name={icon} size={16} color={accentColor || (theme?.primary ?? colors.primary)} />
       </View>
-      <Text style={s.sectionTitle}>{title}</Text>
+      <Text style={[s.sectionTitle, theme && { color: theme.textSecondary }]}>{title}</Text>
     </View>
     {children}
   </Animated.View>
@@ -96,6 +99,9 @@ const AlarmSettingsModal = ({
   permissionStatus = "Not requested",
   onRequestPermission,
 }) => {
+  const { theme } = useTheme();
+  const { width: screenWidth } = useWindowDimensions();
+  const challengeTileWidth = Math.floor((screenWidth - 68) / 2);
   const [form, setForm] = useState(getDefaultForm);
   const isPreviewingRef = useRef(false);
   const suppressStopRef = useRef(false);
@@ -249,22 +255,22 @@ const AlarmSettingsModal = ({
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={s.overlay}
       >
-        <View style={s.sheet}>
-          <View style={s.dragBar} />
+        <View style={[s.sheet, { backgroundColor: theme.bg }]}>
+          <View style={[s.dragBar, { backgroundColor: theme.cardBorder }]} />
 
           {/* Header */}
-          <View style={s.header}>
-            <TouchableOpacity onPress={handleClose} style={s.closeBtn}>
-              <Ionicons name="close" size={22} color={colors.text.primary} />
+          <View style={[s.header, { borderBottomColor: theme.cardBorder }]}>
+            <TouchableOpacity onPress={handleClose} style={[s.closeBtn, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}>
+              <Ionicons name="close" size={22} color={theme.textPrimary} />
             </TouchableOpacity>
             <View style={s.titleWrap}>
-              <Text style={s.title}>
+              <Text style={[s.title, { color: theme.textPrimary }]}>
                 {editingAlarm ? "Edit Alarm" : "New Alarm"}
               </Text>
-              <Text style={s.subtitle}>AI-verified wake-up</Text>
+              <Text style={[s.subtitle, { color: theme.textMuted }]}>AI-verified wake-up</Text>
             </View>
-            <TouchableOpacity onPress={handleSave} style={s.saveBtn}>
-              <Ionicons name="checkmark" size={18} color="#fff" />
+            <TouchableOpacity onPress={handleSave} style={[s.saveBtn, { backgroundColor: theme.primary }]}>
+              <Ionicons name="checkmark" size={18} color="#FFFFFF" />
               <Text style={s.saveTxt}>Save</Text>
             </TouchableOpacity>
           </View>
@@ -277,93 +283,89 @@ const AlarmSettingsModal = ({
             {/* Time Picker */}
             <Animated.View
               entering={FadeInDown.duration(500)}
-              style={s.timeCard}
+              style={[s.timeCard, { backgroundColor: theme.heroCard }]}
             >
               <Text style={s.timeLabel}>SET TIME</Text>
-              <WheelTimePicker
-                hour={form.hour}
-                minute={form.minute}
-                period={form.period}
-                onChangeHour={(v) => set("hour", v)}
-                onChangeMinute={(v) => set("minute", v)}
-                onChangePeriod={(v) => set("period", v)}
-              />
+              <View style={s.timePickerWrap}>
+                <View style={s.timeGlow} pointerEvents="none" />
+                <WheelTimePicker
+                  hour={form.hour}
+                  minute={form.minute}
+                  period={form.period}
+                  onChangeHour={(v) => set("hour", v)}
+                  onChangeMinute={(v) => set("minute", v)}
+                  onChangePeriod={(v) => set("period", v)}
+                />
+              </View>
               <View style={s.timePreview}>
                 <Ionicons
                   name="alarm-outline"
                   size={16}
-                  color={colors.primary}
+                  color={theme.primary}
                 />
-                <Text style={s.timePreviewTxt}>
+                <Text style={[s.timePreviewTxt, { color: theme.heroNeon }]}>
                   {form.hour}:{form.minute} {form.period}
                 </Text>
               </View>
             </Animated.View>
 
             {/* Schedule */}
-            <Section title="Schedule" icon="calendar-outline" delay={100}>
+            <Section title="Schedule" icon="calendar-outline" delay={100} accentColor="#3B82F6" theme={theme}>
               <View style={s.dayRow}>
                 {DAYS.map((day) => {
                   const active = form.repeatDays.includes(day);
                   return (
                     <TouchableOpacity
                       key={day}
-                      style={[s.dayChip, active && s.dayChipOn]}
+                      style={[s.dayChip, { backgroundColor: theme.surface }, active && { backgroundColor: theme.primary }]}
                       onPress={() => toggleDay(day)}
                     >
-                      <Text style={[s.dayChipTxt, active && s.dayChipTxtOn]}>
+                      <Text style={[s.dayChipTxt, { color: theme.textMuted }, active && s.dayChipTxtOn]}>
                         {day.charAt(0)}
                       </Text>
                     </TouchableOpacity>
                   );
                 })}
               </View>
-              <View style={s.labelRow}>
-                <Ionicons name="pricetag-outline" size={16} color="#999" />
+              <View style={[s.labelRow, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}>
+                <Ionicons name="pricetag-outline" size={16} color={theme.textMuted} />
                 <TextInput
-                  style={s.labelInput}
+                  style={[s.labelInput, { color: theme.textPrimary }]}
                   value={form.label}
                   onChangeText={(v) => set("label", v)}
                   placeholder="Alarm label (optional)"
-                  placeholderTextColor="#bbb"
+                  placeholderTextColor={theme.textMuted}
                 />
               </View>
             </Section>
 
             {/* Wake-up Challenge */}
-            <Section
-              title="Wake-up Challenge"
-              icon="rocket-outline"
-              delay={200}
-            >
+            <Section title="Wake-up Challenge" icon="rocket-outline" delay={200} accentColor={theme.primary} theme={theme}>
               <View style={s.challengeGrid}>
                 {ALL_CHALLENGES.map((c) => {
                   const on = form.challengeId === c.id;
                   return (
                     <TouchableOpacity
                       key={c.id}
-                      style={[s.cBox, on && s.cBoxOn]}
+                      style={[
+                        s.cBox,
+                        { width: challengeTileWidth, backgroundColor: theme.surface, borderColor: theme.cardBorder },
+                        on && { backgroundColor: theme.heroCard, borderColor: theme.primary },
+                      ]}
                       onPress={() => selectChallenge(c)}
                       activeOpacity={0.7}
                     >
-                      <View style={[s.cIconWrap, on && s.cIconWrapOn]}>
-                        <Ionicons
-                          name={c.icon}
-                          size={20}
-                          color={on ? "#fff" : colors.primary}
-                        />
+                      <View style={[s.cIconWrap, { backgroundColor: theme.primaryLight }, on && { backgroundColor: theme.primary }]}>
+                        <Ionicons name={c.icon} size={20} color={on ? "#FFFFFF" : theme.primary} />
                       </View>
-                      <Text
-                        numberOfLines={1}
-                        style={[s.cTitle, on && s.cTitleOn]}
-                      >
+                      <Text numberOfLines={1} style={[s.cTitle, { color: theme.textPrimary }, on && s.cTitleOn]}>
                         {c.title}
                       </Text>
                       <View style={s.cBadgeRow}>
-                        <Text style={[s.cBadge, on && s.cBadgeOn]}>
+                        <Text style={[s.cBadge, { color: theme.primary, backgroundColor: theme.primaryLight }, on && s.cBadgeOn]}>
                           {c.verificationTips.split(" ")[0]}
                         </Text>
-                        <Text style={[s.cMeta, on && s.cMetaOn]}>
+                        <Text style={[s.cMeta, { color: theme.textMuted }, on && s.cMetaOn]}>
                           {c.difficulty}
                         </Text>
                       </View>
@@ -373,100 +375,86 @@ const AlarmSettingsModal = ({
               </View>
 
               {form.challengeId === "custom" && (
-                <View style={s.customInputBox}>
-                  <Text style={s.customLabel}>Challenge Description</Text>
+                <View style={[s.customInputBox, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}>
+                  <Text style={[s.customLabel, { color: theme.textMuted }]}>Challenge Description</Text>
                   <TextInput
-                    style={s.customInput}
+                    style={[s.customInput, { color: theme.textPrimary }]}
                     placeholder="e.g. Show my blue water bottle"
-                    placeholderTextColor="#bbb"
+                    placeholderTextColor={theme.textMuted}
                     value={form.customTask}
                     onChangeText={(v) => set("customTask", v)}
                     multiline
                     maxLength={120}
                     autoCapitalize="sentences"
                   />
-                  <Text style={s.customTip}>
-                    {form.customTask.length}/120 - AI will verify your
-                    description.
+                  <Text style={[s.customTip, { color: theme.textMuted }]}>
+                    {form.customTask.length}/120 - AI will verify your description.
                   </Text>
                 </View>
               )}
 
-              <Text style={s.optLabel}>Task Difficulty</Text>
+              <Text style={[s.optLabel, { color: theme.textMuted }]}>Task Difficulty</Text>
               <View style={s.segRow}>
                 {DIFFICULTY_LEVELS.map((lv) => (
                   <TouchableOpacity
                     key={lv}
-                    style={[s.seg, form.difficulty === lv && s.segOn]}
-                    onPress={() => {
-                      Haptics.selectionAsync();
-                      set("difficulty", lv);
-                    }}
+                    style={[
+                      s.seg,
+                      { backgroundColor: theme.surface, borderColor: "transparent" },
+                      form.difficulty === lv && { backgroundColor: theme.primary, borderColor: theme.primary },
+                    ]}
+                    onPress={() => { Haptics.selectionAsync(); set("difficulty", lv); }}
                   >
-                    <Text
-                      style={[s.segTxt, form.difficulty === lv && s.segTxtOn]}
-                    >
+                    <Text style={[s.segTxt, { color: theme.textSecondary }, form.difficulty === lv && s.segTxtOn]}>
                       {lv}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              <Text style={s.optLabel}>Anti-cheat Strictness</Text>
+              <Text style={[s.optLabel, { color: theme.textMuted }]}>Anti-cheat Strictness</Text>
               <View style={s.segRow}>
                 {STRICTNESS_LEVELS.map((lv) => {
                   const on = form.antiCheatStrictness === lv;
-                  const color =
-                    lv === "Standard"
-                      ? "#4CAF50"
-                      : lv === "Strict"
-                        ? "#FF9800"
-                        : "#E23744";
+                  const color = lv === "Standard" ? "#4CAF50" : lv === "Strict" ? "#FF9800" : theme.danger;
                   return (
                     <TouchableOpacity
                       key={lv}
                       style={[
                         s.seg,
+                        { backgroundColor: theme.surface, borderColor: "transparent" },
                         on && { backgroundColor: color, borderColor: color },
                       ]}
-                      onPress={() => {
-                        Haptics.selectionAsync();
-                        set("antiCheatStrictness", lv);
-                      }}
+                      onPress={() => { Haptics.selectionAsync(); set("antiCheatStrictness", lv); }}
                     >
-                      <Text style={[s.segTxt, on && s.segTxtOn]}>{lv}</Text>
+                      <Text style={[s.segTxt, { color: theme.textSecondary }, on && s.segTxtOn]}>{lv}</Text>
                     </TouchableOpacity>
                   );
                 })}
               </View>
-              <Text style={s.strictnessDesc}>
-                {form.antiCheatStrictness === "Standard" &&
-                  "Faster verification, fewer restrictions."}
-                {form.antiCheatStrictness === "Strict" &&
-                  "Balanced protection against simple cheats."}
-                {form.antiCheatStrictness === "Lockdown" &&
-                  "Maximum enforcement. Strictly live frames only."}
+              <Text style={[s.strictnessDesc, { color: theme.textSecondary }]}>
+                {form.antiCheatStrictness === "Standard" && "Faster verification, fewer restrictions."}
+                {form.antiCheatStrictness === "Strict" && "Balanced protection against simple cheats."}
+                {form.antiCheatStrictness === "Lockdown" && "Maximum enforcement. Strictly live frames only."}
               </Text>
 
-              <View style={s.aiBox}>
-                <Ionicons name="sparkles" size={18} color={colors.primary} />
+              <View style={[s.aiBox, { backgroundColor: theme.primaryLight, borderColor: theme.primarySoft }]}>
+                <Ionicons name="sparkles" size={18} color={theme.primary} />
                 <View style={{ flex: 1 }}>
-                  <Text style={s.aiBoxTitle}>AI Verification</Text>
-                  <Text style={s.aiBoxTxt}>
+                  <Text style={[s.aiBoxTitle, { color: theme.textPrimary }]}>AI Verification</Text>
+                  <Text style={[s.aiBoxTxt, { color: theme.textSecondary }]}>
                     {form.challengeId === "custom"
                       ? "AI will perform semantic scene analysis on your custom prompt."
                       : `AI will verify this challenge using live camera analysis. ${getChallengeById(form.challengeId).verificationTips}`}
                   </Text>
-                  <View style={s.targetPreview}>
-                    <Text style={s.targetPreviewLabel}>AI will look for:</Text>
+                  <View style={[s.targetPreview, { borderTopColor: theme.primarySoft }]}>
+                    <Text style={[s.targetPreviewLabel, { color: theme.textSecondary }]}>AI will look for:</Text>
                     <View style={s.targetList}>
                       {(form.challengeId === "custom"
                         ? extractTargets(form.customTask)
                         : form.targets
                       ).map((t, idx) => (
-                        <Text key={idx} style={s.targetTag}>
-                          - {t}
-                        </Text>
+                        <Text key={idx} style={[s.targetTag, { color: theme.primary }]}>- {t}</Text>
                       ))}
                     </View>
                   </View>
@@ -475,23 +463,19 @@ const AlarmSettingsModal = ({
             </Section>
 
             {/* Sound & System */}
-            <Section title="Sound & System" icon="settings-outline" delay={300}>
-              {/* Ringtone */}
-              <Text style={s.optLabel}>Ringtone</Text>
+            <Section title="Sound & System" icon="settings-outline" delay={300} accentColor="#8B5CF6" theme={theme}>
+              <Text style={[s.optLabel, { color: theme.textMuted }]}>Ringtone</Text>
               <View style={s.ringRow}>
                 {RINGTONE_OPTIONS.map((r) => (
                   <TouchableOpacity
                     key={r.value}
                     style={[
                       s.ringChip,
-                      form.ringtone === r.value && s.ringChipOn,
+                      { backgroundColor: theme.surface, borderColor: "transparent" },
+                      form.ringtone === r.value && { backgroundColor: theme.primary, borderColor: theme.primary },
                     ]}
-                    onPressIn={() => {
-                      suppressStopRef.current = true;
-                    }}
-                    onPressOut={() => {
-                      suppressStopRef.current = false;
-                    }}
+                    onPressIn={() => { suppressStopRef.current = true; }}
+                    onPressOut={() => { suppressStopRef.current = false; }}
                     onPress={async () => {
                       Haptics.selectionAsync();
                       set("ringtone", r.value);
@@ -499,51 +483,31 @@ const AlarmSettingsModal = ({
                     }}
                   >
                     <Ionicons
-                      name={
-                        form.ringtone === r.value
-                          ? "musical-note"
-                          : "musical-note-outline"
-                      }
+                      name={form.ringtone === r.value ? "musical-note" : "musical-note-outline"}
                       size={14}
-                      color={form.ringtone === r.value ? "#fff" : "#999"}
+                      color={form.ringtone === r.value ? "#FFFFFF" : theme.textMuted}
                     />
-                    <Text
-                      style={[
-                        s.ringTxt,
-                        form.ringtone === r.value && s.ringTxtOn,
-                      ]}
-                    >
+                    <Text style={[s.ringTxt, { color: theme.textSecondary }, form.ringtone === r.value && s.ringTxtOn]}>
                       {r.label}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              {/* Snooze Stepper */}
-              <View style={s.snoozeRow}>
+              <View style={[s.snoozeRow, { borderBottomColor: theme.divider }]}>
                 <View style={s.snoozeInfo}>
-                  <View style={s.selectorIconShell}>
-                    <Ionicons
-                      name="timer-outline"
-                      size={16}
-                      color={colors.primary}
-                    />
+                  <View style={[s.selectorIconShell, { backgroundColor: theme.primaryLight }]}>
+                    <Ionicons name="timer-outline" size={16} color={theme.primary} />
                   </View>
-                  <Text style={s.snoozeLabel}>Snooze</Text>
+                  <Text style={[s.snoozeLabel, { color: theme.textPrimary }]}>Snooze</Text>
                 </View>
-                <View style={s.stepper}>
-                  <TouchableOpacity
-                    style={s.stepBtn}
-                    onPress={() => adjustSnooze(-1)}
-                  >
-                    <Ionicons name="remove" size={18} color={colors.primary} />
+                <View style={[s.stepper, { backgroundColor: theme.surface }]}>
+                  <TouchableOpacity style={s.stepBtn} onPress={() => adjustSnooze(-1)}>
+                    <Ionicons name="remove" size={18} color={theme.primary} />
                   </TouchableOpacity>
-                  <Text style={s.stepVal}>{form.snoozeMinutes}m</Text>
-                  <TouchableOpacity
-                    style={s.stepBtn}
-                    onPress={() => adjustSnooze(1)}
-                  >
-                    <Ionicons name="add" size={18} color={colors.primary} />
+                  <Text style={[s.stepVal, { color: theme.textPrimary }]}>{form.snoozeMinutes}m</Text>
+                  <TouchableOpacity style={s.stepBtn} onPress={() => adjustSnooze(1)}>
+                    <Ionicons name="add" size={18} color={theme.primary} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -553,6 +517,7 @@ const AlarmSettingsModal = ({
                 value={form.isActive}
                 onChange={(v) => set("isActive", v)}
                 icon="notifications-outline"
+                theme={theme}
               />
             </Section>
 
@@ -564,25 +529,20 @@ const AlarmSettingsModal = ({
   );
 };
 
-const ToggleItem = ({ label, value, onChange, icon }) => (
-  <View style={s.toggleRow}>
+const ToggleItem = ({ label, value, onChange, icon, theme }) => (
+  <View style={[s.toggleRow, theme && { borderBottomColor: theme.divider }]}>
     <View style={s.toggleLeft}>
       {icon && (
-        <Ionicons
-          name={icon}
-          size={16}
-          color="#999"
-          style={{ marginRight: 8 }}
-        />
+        <Ionicons name={icon} size={16} color={theme?.textMuted ?? colors.text.muted} style={{ marginRight: 8 }} />
       )}
-      <Text style={s.toggleTxt}>{label}</Text>
+      <Text style={[s.toggleTxt, theme && { color: theme.textPrimary }]}>{label}</Text>
     </View>
     <Switch
       value={value}
       onValueChange={onChange}
-      trackColor={{ false: "#E8E8E8", true: colors.primary }}
-      thumbColor="#fff"
-      ios_backgroundColor="#E8E8E8"
+      trackColor={{ false: theme?.cardBorder ?? "#E8E8E8", true: theme?.primary ?? colors.primary }}
+      thumbColor="#FFFFFF"
+      ios_backgroundColor={theme?.cardBorder ?? "#E8E8E8"}
     />
   </View>
 );
@@ -590,88 +550,72 @@ const ToggleItem = ({ label, value, onChange, icon }) => (
 const s = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
+    backgroundColor: "rgba(10,16,13,0.55)",
     justifyContent: "flex-end",
   },
   sheet: {
-    backgroundColor: "#F5F5F7",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     height: "92%",
   },
   dragBar: {
-    width: 40,
+    width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: "#D0D0D0",
     alignSelf: "center",
     marginTop: 10,
     marginBottom: 4,
   },
-
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 18,
     paddingVertical: 14,
+    borderBottomWidth: 1,
   },
   closeBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 16,
-    backgroundColor: "#fff",
+    width: 38,
+    height: 38,
+    borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#EFEFEF",
   },
   titleWrap: { alignItems: "center" },
-  title: {
-    fontSize: 18,
-    fontFamily: typography.family.extraBold,
-    color: colors.text.primary,
-  },
-  subtitle: {
-    fontSize: 11,
-    fontFamily: typography.family.bold,
-    color: "#999",
-    marginTop: 1,
-  },
+  title: { fontSize: 17, fontFamily: typography.family.extraBold },
+  subtitle: { fontSize: 11, fontFamily: typography.family.medium, marginTop: 1 },
   saveBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 16,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 4,
+    borderRadius: 10,
   },
-  saveTxt: { color: "#fff", fontFamily: typography.family.bold, fontSize: 14 },
+  saveTxt: { color: "#FFFFFF", fontFamily: typography.family.bold, fontSize: 14 },
   scrollContent: { padding: 16, paddingBottom: 50 },
-
-  // Time Card
   timeCard: {
-    backgroundColor: "#1C1C1C",
-    borderRadius: 24,
+    borderRadius: 18,
     padding: 20,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 6,
+    marginBottom: 14,
+  },
+  timePickerWrap: { position: "relative", overflow: "hidden", borderRadius: 14 },
+  timeGlow: {
+    position: "absolute",
+    top: "20%",
+    left: "10%",
+    right: "10%",
+    height: "60%",
+    borderRadius: 140,
+    backgroundColor: "rgba(255,255,255,0.04)",
+    opacity: 1,
   },
   timeLabel: {
     textAlign: "center",
     fontFamily: typography.family.bold,
-    fontSize: 11,
-    color: "rgba(255,255,255,0.5)",
+    fontSize: 10,
+    color: "rgba(255,255,255,0.4)",
     letterSpacing: 2,
     marginBottom: 12,
   },
@@ -681,413 +625,149 @@ const s = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
     marginTop: 14,
-    backgroundColor: "rgba(226,55,68,0.12)",
     paddingVertical: 8,
     paddingHorizontal: 16,
-    borderRadius: 12,
+    borderRadius: 8,
     alignSelf: "center",
   },
-  timePreviewTxt: {
-    fontFamily: typography.family.extraBold,
-    fontSize: 16,
-    color: colors.primary,
-  },
-
-  // Section
+  timePreviewTxt: { fontFamily: typography.family.extraBold, fontSize: 15 },
   section: {
-    backgroundColor: "#fff",
-    borderRadius: 22,
+    borderRadius: 16,
     padding: 18,
-    marginBottom: 14,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 10,
-    elevation: 1,
+    overflow: "hidden",
   },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 16,
+  sectionAccent: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
   },
-  sectionIconWrap: {
-    width: 30,
-    height: 30,
-    borderRadius: 10,
-    backgroundColor: colors.primaryLight,
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 },
+  sectionIconWrap: { width: 28, height: 28, borderRadius: 8, justifyContent: "center", alignItems: "center" },
   sectionTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: typography.family.extraBold,
-    color: "#888",
     letterSpacing: 0.8,
     textTransform: "uppercase",
   },
-
-  // Days
-  dayRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 16,
-  },
-  dayChip: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    backgroundColor: "#F5F5F5",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  dayChipOn: {
-    backgroundColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  dayChipTxt: {
-    fontFamily: typography.family.bold,
-    fontSize: 14,
-    color: "#BBB",
-  },
-  dayChipTxtOn: { color: "#fff" },
-
-  // Label
+  dayRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 16 },
+  dayChip: { width: 38, height: 38, borderRadius: 10, justifyContent: "center", alignItems: "center" },
+  dayChipOn: {},
+  dayChipTxt: { fontFamily: typography.family.bold, fontSize: 13 },
+  dayChipTxtOn: { color: "#FFFFFF" },
   labelRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "#F8F8F8",
-    borderRadius: 14,
+    borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 11,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
   },
-  labelInput: {
-    flex: 1,
-    fontSize: 15,
-    fontFamily: typography.family.bold,
-    color: colors.text.primary,
-    padding: 0,
-  },
-
-  // Challenges
-  challengeGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    marginBottom: 18,
-  },
+  labelInput: { flex: 1, fontSize: 15, fontFamily: typography.family.bold, padding: 0 },
+  challengeGrid: { flexDirection: "row", flexWrap: "wrap", marginBottom: 18, justifyContent: "space-between" },
   cBox: {
-    width: "48%",
-    backgroundColor: "#F8F8F8",
-    borderRadius: 16,
+    borderRadius: 12,
     padding: 14,
     alignItems: "center",
-    minHeight: 100,
+    height: 116,
     justifyContent: "center",
     borderWidth: 1.5,
-    borderColor: "transparent",
-  },
-  cBoxOn: {
-    backgroundColor: "#1C1C1C",
-    borderColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  cIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: colors.primaryLight,
-    justifyContent: "center",
-    alignItems: "center",
     marginBottom: 8,
   },
-  cIconWrapOn: { backgroundColor: colors.primary },
-  cTitle: {
-    fontSize: 12,
-    fontFamily: typography.family.bold,
-    color: "#444",
-    textAlign: "center",
-    marginBottom: 4,
-  },
-  cTitleOn: { color: "#fff" },
+  cBoxOn: {},
+  cIconWrap: { width: 36, height: 36, borderRadius: 10, justifyContent: "center", alignItems: "center", marginBottom: 8 },
+  cIconWrapOn: {},
+  cTitle: { fontSize: 12, fontFamily: typography.family.bold, textAlign: "center", marginBottom: 4 },
+  cTitleOn: { color: "#FFFFFF" },
   cBadgeRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  cBadge: {
-    fontSize: 9,
-    fontFamily: typography.family.extraBold,
-    color: colors.primary,
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    borderRadius: 5,
-    overflow: "hidden",
-  },
-  cBadgeOn: { color: "#fff", backgroundColor: "rgba(255,255,255,0.2)" },
-  cMeta: {
-    fontSize: 10,
-    fontFamily: typography.family.bold,
-    color: "#AAA",
-    textAlign: "center",
-  },
-  cMetaOn: { color: "rgba(255,255,255,0.6)" },
-
-  // Segments
+  cBadge: { fontSize: 9, fontFamily: typography.family.extraBold, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4, overflow: "hidden" },
+  cBadgeOn: { color: "#FFFFFF", backgroundColor: "rgba(255,255,255,0.15)" },
+  cMeta: { fontSize: 10, fontFamily: typography.family.bold, textAlign: "center" },
+  cMetaOn: { color: "rgba(255,255,255,0.55)" },
   optLabel: {
     fontFamily: typography.family.bold,
-    fontSize: 12,
-    color: "#999",
+    fontSize: 11,
     marginBottom: 8,
     marginTop: 16,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
   },
   segRow: { flexDirection: "row", gap: 8 },
-  seg: {
-    flex: 1,
-    alignItems: "center",
-    backgroundColor: "#F5F5F5",
-    paddingVertical: 11,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: "transparent",
-  },
-  segOn: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  segTxt: { fontFamily: typography.family.bold, fontSize: 12, color: "#999" },
-  segTxtOn: { color: "#fff" },
-
-  // Toggles
+  seg: { flex: 1, alignItems: "center", paddingVertical: 11, borderRadius: 10, borderWidth: 1.5 },
+  segOn: {},
+  segTxt: { fontFamily: typography.family.bold, fontSize: 12 },
+  segTxtOn: { color: "#FFFFFF" },
   toggleRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#F5F5F5",
   },
   toggleLeft: { flexDirection: "row", alignItems: "center", flex: 1 },
-  toggleTxt: {
-    fontFamily: typography.family.bold,
-    fontSize: 14,
-    color: colors.text.primary,
-  },
-
-  // AI Info
+  toggleTxt: { fontFamily: typography.family.bold, fontSize: 14 },
   aiBox: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 10,
-    backgroundColor: colors.primaryLight,
-    borderRadius: 14,
+    borderRadius: 12,
     padding: 14,
     marginTop: 16,
     borderWidth: 1,
-    borderColor: "#F7DADB",
   },
-  aiBoxTitle: {
-    fontFamily: typography.family.extraBold,
-    fontSize: 13,
-    color: colors.text.primary,
-    marginBottom: 2,
-  },
-  aiBoxTxt: {
-    fontFamily: typography.family.bold,
-    fontSize: 12,
-    color: "#666",
-    lineHeight: 16,
-    marginBottom: 8,
-  },
-  targetPreview: {
-    borderTopWidth: 1,
-    borderTopColor: "rgba(0,0,0,0.05)",
-    paddingTop: 8,
-  },
+  aiBoxTitle: { fontFamily: typography.family.extraBold, fontSize: 13, marginBottom: 2 },
+  aiBoxTxt: { fontFamily: typography.family.medium, fontSize: 12, lineHeight: 17, marginBottom: 8 },
+  targetPreview: { borderTopWidth: 1, paddingTop: 8 },
   targetPreviewLabel: {
     fontSize: 10,
     fontFamily: typography.family.extraBold,
-    color: "#999",
     textTransform: "uppercase",
     marginBottom: 4,
   },
   targetList: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  targetTag: {
-    fontSize: 11,
-    fontFamily: typography.family.bold,
-    color: colors.primary,
-  },
-
-  // Custom Challenge
-  customInputBox: {
-    marginTop: 12,
-    backgroundColor: "#F8F8F8",
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: "#EEE",
-  },
-  customLabel: {
-    fontSize: 11,
-    fontFamily: typography.family.bold,
-    color: "#999",
-    marginBottom: 8,
-    textTransform: "uppercase",
-  },
-  customInput: {
-    fontSize: 15,
-    fontFamily: typography.family.bold,
-    color: colors.text.primary,
-    minHeight: 60,
-    textAlignVertical: "top",
-    padding: 0,
-    marginBottom: 4,
-  },
-  customTip: {
-    fontSize: 10,
-    fontFamily: typography.family.bold,
-    color: "#BBB",
-    marginTop: 4,
-  },
-
-  // Strictness
-  strictnessDesc: {
-    fontSize: 11,
-    fontFamily: typography.family.bold,
-    color: "#888",
-    marginTop: 8,
-    marginLeft: 4,
-  },
-
-  // Ringtones
+  targetTag: { fontSize: 11, fontFamily: typography.family.bold },
+  customInputBox: { marginTop: 12, borderRadius: 12, padding: 14, borderWidth: 1 },
+  customLabel: { fontSize: 11, fontFamily: typography.family.bold, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 },
+  customInput: { fontSize: 15, fontFamily: typography.family.bold, minHeight: 60, textAlignVertical: "top", padding: 0, marginBottom: 4 },
+  customTip: { fontSize: 10, fontFamily: typography.family.bold, marginTop: 4 },
+  strictnessDesc: { fontSize: 11, fontFamily: typography.family.medium, marginTop: 8, marginLeft: 2 },
   ringRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   ringChip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: "#F5F5F5",
     paddingHorizontal: 12,
     paddingVertical: 9,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: "transparent",
   },
-  ringChipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
-  ringTxt: { fontFamily: typography.family.bold, fontSize: 11, color: "#888" },
-  ringTxtOn: { color: "#fff" },
-  nativeSoundBox: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    backgroundColor: colors.primaryLight,
-    borderRadius: 14,
-    padding: 12,
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: "#F7DADB",
-  },
-  nativeSoundText: {
-    flex: 1,
-    fontFamily: typography.family.bold,
-    fontSize: 11,
-    lineHeight: 16,
-    color: colors.text.primary,
-  },
-
-  // Snooze
+  ringChipOn: {},
+  ringTxt: { fontFamily: typography.family.bold, fontSize: 11 },
+  ringTxtOn: { color: "#FFFFFF" },
   snoozeRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#F5F5F5",
   },
   snoozeInfo: { flexDirection: "row", alignItems: "center", gap: 10 },
-  selectorIconShell: {
-    width: 32,
-    height: 32,
-    borderRadius: 11,
-    backgroundColor: colors.primaryLight,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  snoozeLabel: {
-    fontFamily: typography.family.bold,
-    fontSize: 14,
-    color: colors.text.primary,
-  },
-  stepper: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F5F5F5",
-    borderRadius: 14,
-    overflow: "hidden",
-  },
-  stepBtn: {
-    width: 36,
-    height: 36,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  stepVal: {
-    fontFamily: typography.family.extraBold,
-    fontSize: 14,
-    color: colors.text.primary,
-    minWidth: 36,
-    textAlign: "center",
-  },
-
-  // Permission
-  permBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FAFAFA",
-    padding: 14,
-    borderRadius: 14,
-    marginTop: 14,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-  },
-  permLabel: {
-    fontFamily: typography.family.bold,
-    fontSize: 13,
-    color: colors.text.primary,
-  },
-  permStatus: {
-    fontSize: 11,
-    fontFamily: typography.family.bold,
-    color: "#FF9800",
-    marginTop: 1,
-  },
-  permBtn: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 10,
-  },
-  permBtnTxt: {
-    fontFamily: typography.family.bold,
-    fontSize: 12,
-    color: "#fff",
-  },
+  selectorIconShell: { width: 32, height: 32, borderRadius: 9, justifyContent: "center", alignItems: "center" },
+  snoozeLabel: { fontFamily: typography.family.bold, fontSize: 14 },
+  stepper: { flexDirection: "row", alignItems: "center", borderRadius: 10, overflow: "hidden" },
+  stepBtn: { width: 36, height: 36, justifyContent: "center", alignItems: "center" },
+  stepVal: { fontFamily: typography.family.extraBold, fontSize: 14, minWidth: 36, textAlign: "center" },
+  permBox: { flexDirection: "row", alignItems: "center", borderRadius: 12, marginTop: 14, padding: 14, borderWidth: 1 },
+  permLabel: { fontFamily: typography.family.bold, fontSize: 13 },
+  permStatus: { fontSize: 11, fontFamily: typography.family.bold, marginTop: 1 },
+  permBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8 },
+  permBtnTxt: { fontFamily: typography.family.bold, fontSize: 12, color: "#FFFFFF" },
 });
 
 export default AlarmSettingsModal;

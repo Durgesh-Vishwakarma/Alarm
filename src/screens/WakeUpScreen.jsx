@@ -3,37 +3,39 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { useAtom, useSetAtom } from "jotai";
 import { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Animated, {
-  FadeIn,
-  FadeInDown,
-  FadeInUp,
-  FadeOut,
-  interpolate,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withSequence,
-  withSpring,
-  withTiming,
-  ZoomIn,
+    cancelAnimation,
+    FadeIn,
+    FadeInDown,
+    FadeInUp,
+    FadeOut,
+    interpolate,
+    useAnimatedStyle,
+    useSharedValue,
+    withRepeat,
+    withSequence,
+    withSpring,
+    withTiming,
+    ZoomIn,
 } from "react-native-reanimated";
 import {
-  activeAlarmIdAtom,
-  activeRouteAlarmIdAtom,
-  wakeSessionAtom,
+    activeAlarmIdAtom,
+    activeRouteAlarmIdAtom,
+    wakeSessionAtom,
 } from "../atoms/alarmAtoms";
 import { Card } from "../components/Card";
 import { verifyChallengeImage } from "../services/aiVerificationService";
 import { dismissAlarm } from "../services/alarmEngine";
 import { recordWakeResult } from "../services/streakService";
 import { colors, spacing, typography } from "../theme";
+import { useTheme } from "../theme/ThemeContext";
 
 const isFreshCapture = (photo) => {
   const capturedAt = photo?.capturedAt
@@ -42,16 +44,15 @@ const isFreshCapture = (photo) => {
   return Date.now() - capturedAt < 30000;
 };
 
-const CameraUnavailableFallback = ({ onBack }) => (
+const CameraUnavailableFallback = ({ onBack, primaryColor }) => (
   <View style={styles.container}>
     <Card style={styles.unsupportedCard}>
       <Text style={styles.instructionText}>Camera Runtime</Text>
       <Text style={styles.targetObject}>Camera Unavailable</Text>
       <Text style={styles.unsupportedText}>
-        We could not initialize the camera. Please check permissions and try
-        again.
+        We could not initialize the camera. Please check permissions and try again.
       </Text>
-      <TouchableOpacity style={styles.fallbackButton} onPress={onBack}>
+      <TouchableOpacity style={[styles.fallbackButton, { backgroundColor: primaryColor }]} onPress={onBack}>
         <Text style={styles.fallbackButtonText}>Back to Alarms</Text>
       </TouchableOpacity>
     </Card>
@@ -59,6 +60,7 @@ const CameraUnavailableFallback = ({ onBack }) => (
 );
 
 export const WakeUpScreen = () => {
+  const { theme } = useTheme();
   const camera = useRef(null);
   const timeoutRef = useRef(null);
   const [wakeSession, setWakeSession] = useAtom(wakeSessionAtom);
@@ -71,6 +73,9 @@ export const WakeUpScreen = () => {
   const scanLineY = useSharedValue(0);
   const pulseValue = useSharedValue(1);
   const intensityValue = useSharedValue(0);
+  const bracketPulse = useSharedValue(1);
+  const capturePulse = useSharedValue(0);
+  const checkProgress = useSharedValue(0);
 
   const [permission, requestPermission] = useCameraPermissions();
   const hasPermission = permission?.granted;
@@ -113,6 +118,39 @@ export const WakeUpScreen = () => {
     }
   }, [intensityValue, pulseValue, wakeSession.status, wakeSession.retries]);
 
+  useEffect(() => {
+    bracketPulse.value = withRepeat(
+      withTiming(1.05, { duration: 1600 }),
+      -1,
+      true,
+    );
+  }, [bracketPulse]);
+
+  useEffect(() => {
+    if (isProcessing) {
+      cancelAnimation(capturePulse);
+      capturePulse.value = 0;
+      return;
+    }
+
+    capturePulse.value = 0;
+    capturePulse.value = withRepeat(
+      withTiming(1, { duration: 1400 }),
+      -1,
+      false,
+    );
+  }, [capturePulse, isProcessing]);
+
+  useEffect(() => {
+    if (
+      wakeSession.status === "success" &&
+      wakeSession.verificationResult?.success
+    ) {
+      checkProgress.value = 0;
+      checkProgress.value = withTiming(1, { duration: 900 });
+    }
+  }, [checkProgress, wakeSession.status, wakeSession.verificationResult]);
+
   // AI Scan animation speed scales with retries
   useEffect(() => {
     if (isProcessing) {
@@ -144,6 +182,23 @@ export const WakeUpScreen = () => {
       [0, 1],
       ["rgba(255,255,255,0.1)", "rgba(255, 30, 60, 0.9)"],
     ),
+  }));
+
+  const bracketPulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: bracketPulse.value }],
+  }));
+
+  const capturePulseStyle = useAnimatedStyle(() => ({
+    opacity: 0.5 - capturePulse.value * 0.35,
+    transform: [{ scale: 1 + capturePulse.value * 0.45 }],
+  }));
+
+  const shortStrokeStyle = useAnimatedStyle(() => ({
+    width: interpolate(checkProgress.value, [0, 1], [0, 18]),
+  }));
+
+  const longStrokeStyle = useAnimatedStyle(() => ({
+    width: interpolate(checkProgress.value, [0, 1], [0, 38]),
   }));
 
   const handleDismiss = async () => {
@@ -272,16 +327,16 @@ export const WakeUpScreen = () => {
 
   if (!hasPermission) {
     if (permission?.status === "denied")
-      return <CameraUnavailableFallback onBack={handleDismiss} />;
+      return <CameraUnavailableFallback onBack={handleDismiss} primaryColor={theme.primary} />;
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <Animated.View entering={FadeInDown.duration(450)} style={styles.container}>
       <CameraView ref={camera} style={StyleSheet.absoluteFill} facing="back" />
 
       {/* AI Radar Grid Overlay */}
@@ -296,14 +351,21 @@ export const WakeUpScreen = () => {
 
       {/* AI HUD Brackets */}
       <View style={styles.hudContainer} pointerEvents="none">
-        <View style={[styles.hudBracket, styles.hudTopLeft]} />
-        <View style={[styles.hudBracket, styles.hudTopRight]} />
-        <View style={[styles.hudBracket, styles.hudBottomLeft]} />
-        <View style={[styles.hudBracket, styles.hudBottomRight]} />
+        <Animated.View
+          style={[styles.hudBracket, styles.hudTopLeft, bracketPulseStyle]}
+        />
+        <Animated.View
+          style={[styles.hudBracket, styles.hudTopRight, bracketPulseStyle]}
+        />
+        <Animated.View
+          style={[styles.hudBracket, styles.hudBottomLeft, bracketPulseStyle]}
+        />
+        <Animated.View
+          style={[styles.hudBracket, styles.hudBottomRight, bracketPulseStyle]}
+        />
       </View>
 
-      {/* Dynamic Scan Line */}
-      <Animated.View style={[styles.scanLine, animatedScanLine]} />
+      <Animated.View style={[styles.scanLine, animatedScanLine, { backgroundColor: theme.primary }]} />
 
       {/* Challenge Header */}
       <Animated.View
@@ -314,7 +376,7 @@ export const WakeUpScreen = () => {
           <View style={styles.headerRow}>
             <Text style={styles.instructionText}>SNAPWAKE AI CHALLENGE</Text>
             {wakeSession.retries > 0 && (
-              <View style={styles.retryBadge}>
+              <View style={[styles.retryBadge, { backgroundColor: theme.primary }]}>
                 <Text style={styles.retryText}>
                   LVL {wakeSession.retries} INTENSITY
                 </Text>
@@ -327,7 +389,7 @@ export const WakeUpScreen = () => {
           <View style={styles.targetTags}>
             {(wakeSession.targets || []).slice(0, 3).map((tag, i) => (
               <View key={i} style={styles.tag}>
-                <Text style={styles.tagText}>• {tag}</Text>
+                <Text style={styles.tagText}>{tag}</Text>
               </View>
             ))}
           </View>
@@ -341,7 +403,7 @@ export const WakeUpScreen = () => {
               {isProcessing && (
                 <ActivityIndicator
                   size="small"
-                  color={colors.primary}
+                  color={theme.primary}
                   style={{ marginRight: 8 }}
                 />
               )}
@@ -360,7 +422,7 @@ export const WakeUpScreen = () => {
           <Ionicons
             name="shield-checkmark"
             size={12}
-            color="#fff"
+            color={colors.white}
             style={{ marginRight: 6 }}
           />
           <Text style={styles.strictnessText}>
@@ -373,9 +435,12 @@ export const WakeUpScreen = () => {
           onPress={handleCapture}
           disabled={isProcessing}
         >
-          <View style={styles.captureButtonInner}>
-            {isProcessing ? (
-              <ActivityIndicator color={colors.primary} size="large" />
+          {!isProcessing ? (
+            <Animated.View style={[styles.capturePulseRing, capturePulseStyle, { borderColor: theme.heroNeon + "66" }]} />
+          ) : null}
+      <View style={[styles.captureButtonInner, { backgroundColor: theme.primary }, isProcessing && styles.captureButtonInnerProcessing]}>
+          {isProcessing ? (
+              <ActivityIndicator color="#FFFFFF" size="large" />
             ) : (
               <View style={styles.captureDot} />
             )}
@@ -395,7 +460,16 @@ export const WakeUpScreen = () => {
               entering={ZoomIn.duration(600)}
               style={styles.successCard}
             >
-              <Text style={styles.successIcon}>🏆</Text>
+              <View style={styles.successIconWrap}>
+                <View style={styles.checkmarkShape}>
+                  <Animated.View
+                    style={[styles.checkmarkShort, shortStrokeStyle]}
+                  />
+                  <Animated.View
+                    style={[styles.checkmarkLong, longStrokeStyle]}
+                  />
+                </View>
+              </View>
               <Text style={styles.successTitle}>MORNING WIN!</Text>
               <Text style={styles.successSubtitle}>
                 AI Verified. Challenge complete.
@@ -411,7 +485,7 @@ export const WakeUpScreen = () => {
             entering={ZoomIn.duration(450)}
             style={styles.failCard}
           >
-            <Text style={styles.failIcon}>⚠️</Text>
+            <Ionicons name="alert-circle" size={64} color={colors.danger} />
             <Text style={styles.failTitle}>VERIFICATION FAILED</Text>
             <Text style={styles.failSubtitle}>
               {wakeSession.verificationResult?.message ||
@@ -420,18 +494,18 @@ export const WakeUpScreen = () => {
           </Animated.View>
         </Animated.View>
       )}
-    </View>
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: colors.dark.background,
     justifyContent: "center",
     alignItems: "center",
   },
-  radarOverlay: { ...StyleSheet.absoluteFillObject, opacity: 0.15, zIndex: 1 },
+  radarOverlay: { ...StyleSheet.absoluteFillObject, opacity: 0.25, zIndex: 1 },
   gridLineV: {
     position: "absolute",
     top: 0,
@@ -474,10 +548,6 @@ const styles = StyleSheet.create({
     right: 0,
     height: 2,
     backgroundColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOpacity: 1,
-    shadowRadius: 15,
-    elevation: 20,
     zIndex: 10,
   },
   overlayContainer: {
@@ -500,10 +570,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   instructionText: {
-    fontFamily: typography.family.extraBold,
-    fontSize: 10,
-    color: "#666",
-    letterSpacing: 2,
+    fontFamily: typography.family.bold,
+    fontSize: 9,
+    color: "rgba(255,255,255,0.4)",
+    letterSpacing: 1.6,
   },
   retryBadge: {
     backgroundColor: colors.primary,
@@ -512,13 +582,13 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   retryText: {
-    color: "#fff",
+    color: colors.white,
     fontSize: 9,
-    fontFamily: typography.family.extraBold,
+    fontFamily: typography.family.bold,
   },
   targetObject: {
-    fontFamily: typography.family.extraBold,
-    fontSize: 32,
+    fontFamily: typography.family.bold,
+    fontSize: 42,
     color: colors.white,
     textAlign: "center",
   },
@@ -535,7 +605,11 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 8,
   },
-  tagText: { fontFamily: typography.family.bold, fontSize: 11, color: "#999" },
+  tagText: {
+    fontFamily: typography.family.bold,
+    fontSize: 11,
+    color: "rgba(255,255,255,0.68)",
+  },
   statusBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -550,7 +624,7 @@ const styles = StyleSheet.create({
   statusBadgeText: {
     fontFamily: typography.family.bold,
     fontSize: 13,
-    color: "#fff",
+    color: colors.white,
   },
   bottomContainer: {
     position: "absolute",
@@ -568,33 +642,46 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   strictnessText: {
-    color: "#fff",
+    color: colors.white,
     fontSize: 11,
-    fontFamily: typography.family.extraBold,
+    fontFamily: typography.family.bold,
   },
   captureButton: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    borderWidth: 4,
-    borderColor: "#fff",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    backgroundColor: "rgba(0,0,0,0.35)",
+  },
+  capturePulseRing: {
+    position: "absolute",
+    width: 102,
+    height: 102,
+    borderRadius: 51,
+    borderWidth: 2,
+    borderColor: "rgba(158, 216, 194, 0.42)",
   },
   captureButtonInner: {
     width: 76,
     height: 76,
     borderRadius: 38,
-    backgroundColor: "#fff",
+    backgroundColor: colors.primary,
     justifyContent: "center",
     alignItems: "center",
+  },
+  captureButtonInnerProcessing: {
+    backgroundColor: "rgba(18, 107, 95, 0.7)",
+    borderWidth: 3,
+    borderColor: "rgba(255,255,255,0.85)",
   },
   captureDot: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.primary,
+    backgroundColor: "rgba(255,255,255,0.92)",
   },
   captureTip: {
     color: "rgba(255,255,255,0.6)",
@@ -617,19 +704,51 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     paddingVertical: 60,
     borderWidth: 1,
-    borderColor: colors.primary,
+    borderColor: colors.success,
   },
-  successIcon: { fontSize: 72, marginBottom: 32 },
+  successIconWrap: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(52, 199, 89, 0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(52, 199, 89, 0.35)",
+    marginBottom: 26,
+  },
+  checkmarkShape: {
+    width: 56,
+    height: 40,
+  },
+  checkmarkShort: {
+    position: "absolute",
+    left: 6,
+    top: 20,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.success,
+    transform: [{ rotate: "45deg" }],
+  },
+  checkmarkLong: {
+    position: "absolute",
+    left: 18,
+    top: 14,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.success,
+    transform: [{ rotate: "-45deg" }],
+  },
   successTitle: {
-    fontFamily: typography.family.extraBold,
+    fontFamily: typography.family.bold,
     fontSize: 30,
-    color: colors.primary,
+    color: colors.success,
     marginBottom: 16,
   },
   successSubtitle: {
     fontFamily: typography.family.bold,
     fontSize: 18,
-    color: "#666",
+    color: colors.text.muted,
     textAlign: "center",
     paddingHorizontal: 30,
   },
@@ -645,7 +764,7 @@ const styles = StyleSheet.create({
   },
   failIcon: { fontSize: 64, marginBottom: 20 },
   failTitle: {
-    fontFamily: typography.family.extraBold,
+    fontFamily: typography.family.bold,
     fontSize: 22,
     color: colors.primary,
     marginBottom: 12,
@@ -661,7 +780,7 @@ const styles = StyleSheet.create({
   unsupportedText: {
     fontFamily: typography.family.bold,
     fontSize: 14,
-    color: "#666",
+    color: colors.text.muted,
     textAlign: "center",
     marginTop: 14,
   },
@@ -673,8 +792,9 @@ const styles = StyleSheet.create({
     marginTop: 36,
   },
   fallbackButtonText: {
-    color: "#fff",
-    fontFamily: typography.family.extraBold,
+    color: colors.white,
+    fontFamily: typography.family.bold,
     fontSize: 18,
   },
 });
+

@@ -11,7 +11,16 @@ import {
   View,
 } from "react-native";
 import { RectButton, Swipeable } from "react-native-gesture-handler";
-import Animated, { FadeInDown, Layout } from "react-native-reanimated";
+import Animated, {
+  Easing,
+  FadeInDown,
+  Layout,
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   activeAlarmAtom,
@@ -38,6 +47,7 @@ import {
 } from "../services/notificationService";
 import { loadWakeStats } from "../services/streakService";
 import { colors, spacing, typography } from "../theme";
+import { useTheme } from "../theme/ThemeContext";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -50,7 +60,6 @@ const getMinutesUntilAlarm = (alarm) => {
 const formatTimeLeft = (minutes) => {
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
-
   const prefix =
     minutes > 1440
       ? "In over 24h"
@@ -59,17 +68,17 @@ const formatTimeLeft = (minutes) => {
         : `${mins}m left`;
   const dayPrefix =
     new Date().getHours() + minutes / 60 > 24 ? "Tomorrow - " : "Today - ";
-
   return dayPrefix + prefix;
 };
 
 const strictnessMeta = {
   Standard: { color: "#12A150", icon: "shield-outline", label: "Standard" },
-  Strict: { color: "#F59E0B", icon: "shield-half", label: "Strict" },
-  Lockdown: { color: "#E23744", icon: "shield", label: "Lockdown" },
+  Strict:   { color: "#F59E0B", icon: "shield-half",   label: "Strict"   },
+  Lockdown: { color: "#C8463A", icon: "shield",         label: "Lockdown" },
 };
 
 export const HomeScreen = () => {
+  const { theme, isDark } = useTheme();
   const [alarms, setAlarms] = useAtom(alarmsAtom);
   const activeAlarm = useAtomValue(activeAlarmAtom);
   const wakeSession = useAtomValue(wakeSessionAtom);
@@ -78,6 +87,8 @@ export const HomeScreen = () => {
   const [isModalVisible, setModalVisible] = useState(false);
   const [editingAlarm, setEditingAlarm] = useState(null);
   const [permissionStatus, setPermissionStatus] = useState("Not requested");
+  const isEmptyState = alarms.length === 0;
+  const fabPulse = useSharedValue(0);
 
   const hydrate = useCallback(async () => {
     const [storedAlarms, storedStats] = await Promise.all([
@@ -91,6 +102,26 @@ export const HomeScreen = () => {
   useEffect(() => {
     hydrate();
   }, [hydrate]);
+
+  useEffect(() => {
+    if (!isEmptyState) {
+      cancelAnimation(fabPulse);
+      fabPulse.value = 0;
+      return;
+    }
+
+    fabPulse.value = 0;
+    fabPulse.value = withRepeat(
+      withTiming(1, { duration: 1400, easing: Easing.out(Easing.quad) }),
+      -1,
+      false,
+    );
+  }, [fabPulse, isEmptyState]);
+
+  const fabPulseStyle = useAnimatedStyle(() => ({
+    opacity: 0.45 - fabPulse.value * 0.35,
+    transform: [{ scale: 1 + fabPulse.value * 0.5 }],
+  }));
 
   const activeAlarms = useMemo(
     () => alarms.filter((alarm) => alarm.isActive),
@@ -225,111 +256,139 @@ export const HomeScreen = () => {
     </View>
   );
 
-  const renderHeader = () => (
-    <Animated.View entering={FadeInDown.duration(450)} style={styles.dashboard}>
-      <View style={styles.nextAlarmCard}>
-        <View style={styles.nextAlarmTopRow}>
-          <View>
-            <Text style={styles.darkStatLabel}>Next Alarm</Text>
-            <Text style={styles.nextAlarmText}>
-              {nextAlarm ? `${nextAlarm.time} ${nextAlarm.period}` : "No alarm"}
-            </Text>
+  const renderHeader = () => {
+    const headerChallenge = nextAlarm
+      ? nextAlarm.challengeId === "custom"
+        ? { icon: "sparkles", title: "Custom" }
+        : getChallengeById(nextAlarm.challengeId)
+      : null;
+
+    return (
+      <Animated.View entering={FadeInDown.duration(450)} style={styles.dashboard}>
+
+        {/* ── Next Alarm Card ── */}
+        <View style={[styles.nextAlarmCard, { backgroundColor: theme.heroCard }]}>
+          <View style={styles.naTopRow}>
+            <Text style={styles.naEyebrow}>NEXT ALARM</Text>
+            {nextAlarm ? (
+              <View style={[styles.naCountdownChip, { backgroundColor: theme.heroCountdown }]}>
+                <Ionicons name="time-outline" size={12} color={theme.heroNeon} />
+                <Text style={[styles.naCountdownText, { color: theme.heroNeon }]}>
+                  {formatTimeLeft(nextAlarm.minutesUntil)}
+                </Text>
+              </View>
+            ) : null}
           </View>
-          <View style={styles.ringBadge}>
-            <Ionicons name="radio-button-on" size={20} color={colors.white} />
-          </View>
-        </View>
-        <View style={styles.nextAlarmBottomRow}>
-          <Text style={styles.nextAlarmSubtext}>
-            {nextAlarm ? nextAlarm.label : "Tap + to schedule"}
-          </Text>
+
           {nextAlarm ? (
-            <Text style={styles.nextAlarmChip}>
-              {formatTimeLeft(nextAlarm.minutesUntil)}
+            <View style={styles.naTimeRow}>
+              <Text style={styles.naTime}>{nextAlarm.time}</Text>
+              <Text style={[styles.naPeriod, { color: theme.heroNeon }]}>{nextAlarm.period}</Text>
+            </View>
+          ) : (
+            <Text style={styles.naNoAlarm}>No alarm set</Text>
+          )}
+
+          <View style={[styles.naBottomRow, { borderTopColor: "rgba(255,255,255,0.08)" }]}>
+            <Text style={styles.naLabel} numberOfLines={1}>
+              {nextAlarm ? nextAlarm.label || "Unnamed alarm" : "Tap + to schedule"}
             </Text>
-          ) : null}
-        </View>
-      </View>
-
-      <View style={styles.statRow}>
-        <View style={styles.statCard}>
-          <View style={styles.statIconShell}>
-            <Ionicons name="flame" size={18} color={colors.primary} />
+            {headerChallenge ? (
+              <View style={[styles.naChallengePill, { backgroundColor: theme.heroAccent }]}>
+                <Ionicons name={headerChallenge.icon} size={12} color={theme.heroNeon} />
+                <Text style={[styles.naChallengeText, { color: theme.heroNeon }]} numberOfLines={1}>
+                  {headerChallenge.title}
+                </Text>
+              </View>
+            ) : null}
           </View>
-          <Text style={styles.statValue}>{wakeStats?.wakeStreak ?? 0}d</Text>
-          <Text style={styles.statLabel}>Wake Streak</Text>
         </View>
-        <View style={styles.statCard}>
-          <View style={styles.statIconShell}>
-            <Ionicons name="checkmark-done" size={18} color={colors.primary} />
-          </View>
-          <Text style={styles.statValue}>{completionRate}%</Text>
-          <Text style={styles.statLabel}>Morning Win Rate</Text>
-        </View>
-      </View>
 
-      <View style={styles.recommendationCard}>
-        <Ionicons name="sparkles" size={18} color={colors.primary} />
-        <Text style={styles.recommendationText}>{recommendations}</Text>
-      </View>
-    </Animated.View>
-  );
+        {/* ── Stat Row ── */}
+        <View style={styles.statRow}>
+          <View style={[styles.statCard, { backgroundColor: theme.heroCard, borderColor: theme.heroBorder }]}>
+            <View style={[styles.statIconShell, { backgroundColor: "rgba(245,158,11,0.2)" }]}>
+              <Ionicons name="flame" size={18} color="#F59E0B" />
+            </View>
+            <Text style={[styles.statValue, { color: "#FFFFFF" }]}>
+              {wakeStats?.wakeStreak ?? 0}d
+            </Text>
+            <Text style={[styles.statLabel, { color: "rgba(255,255,255,0.55)" }]}>Wake Streak</Text>
+          </View>
+          <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+            <View style={[styles.statIconShell, { backgroundColor: theme.surface }]}>
+              <Ionicons name="checkmark-done" size={18} color={theme.primary} />
+            </View>
+            <Text style={[styles.statValue, { color: theme.textPrimary }]}>{completionRate}%</Text>
+            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Morning Win Rate</Text>
+          </View>
+        </View>
+
+        {/* ── AI Coach Card ── */}
+        <View style={[styles.recommendationCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+          <View style={[styles.recommendationBorder, { backgroundColor: theme.primary }]} />
+          <View style={styles.recommendationContent}>
+            <View style={styles.recommendationHeader}>
+              <View style={[styles.aiBadge, { backgroundColor: theme.primaryLight }]}>
+                <Ionicons name="sparkles" size={12} color={theme.primary} />
+                <Text style={[styles.aiBadgeText, { color: theme.primary }]}>AI Coach</Text>
+              </View>
+            </View>
+            <Text style={[styles.recommendationText, { color: theme.textSecondary }]}>
+              {recommendations}
+            </Text>
+          </View>
+        </View>
+
+      </Animated.View>
+    );
+  };
 
   const renderAlarmCard = ({ item }) => {
     if (item.type === "heading") {
-      return <Text style={styles.groupHeading}>{item.title}</Text>;
+      return <Text style={[styles.groupHeading, { color: theme.textMuted }]}>{item.title}</Text>;
     }
 
     const isActive = item.isActive;
     const isRinging = activeAlarm?.id === item.id;
     const activeDays = item.repeatDays || [];
     const isExpanded = expandedAlarmId === item.id;
+    const accentColor = isRinging ? theme.danger : isActive ? theme.primary : theme.cardBorder;
+    const [hourPart, minutePart] = (item.time || "").split(":");
+    const hasSplitTime = Boolean(minutePart);
 
-    // Support Custom Challenges
     const isCustom = item.challengeId === "custom";
     const challenge = isCustom
-      ? {
-          icon: "sparkles",
-          title: "Custom Prompt",
-          verificationMode: "AI Semantic Verification",
-        }
+      ? { icon: "sparkles", title: "Custom Prompt", verificationMode: "AI Semantic Verification" }
       : getChallengeById(item.challengeId);
 
     const strictness = item.antiCheatStrictness || "Strict";
     const sMeta = strictnessMeta[strictness];
 
     return (
-      <Swipeable
-        renderRightActions={() => renderRightActions(item)}
-        overshootRight={false}
-      >
-        <Animated.View
-          layout={Layout.springify().damping(18)}
-          style={styles.alarmCardWrap}
-        >
+      <Swipeable renderRightActions={() => renderRightActions(item)} overshootRight={false}>
+        <Animated.View layout={Layout.springify().damping(18)} style={styles.alarmCardWrap}>
           <Card
-            variant={isRinging ? "ringing" : isActive ? "active" : "default"}
+            variant="default"
             padding="md"
             onPress={() => setExpandedAlarmId(isExpanded ? null : item.id)}
             onLongPress={() => handleLongPress(item)}
-            style={!isActive && styles.alarmCardInactive}
+            style={[
+              styles.alarmCardSurface,
+              { backgroundColor: theme.card, borderColor: theme.cardBorder },
+              !isActive && styles.alarmCardInactive,
+            ]}
           >
+            <View style={[styles.alarmAccent, { backgroundColor: accentColor }]} />
             <View style={styles.cardHeader}>
               <View style={styles.headingContainer}>
                 <View style={styles.alarmTitleRow}>
-                  <View
-                    style={[
-                      styles.statusDot,
-                      isActive && styles.statusDotActive,
-                      isRinging && styles.statusDotRinging,
-                    ]}
-                  />
-                  <Text
-                    style={[
-                      styles.alarmHeading,
-                      !isActive && styles.inactiveText,
-                    ]}
-                  >
+                  <View style={[
+                    styles.statusDot,
+                    isActive && { backgroundColor: theme.primary },
+                    isRinging && { backgroundColor: theme.danger },
+                  ]} />
+                  <Text style={[styles.alarmHeading, { color: isActive ? theme.textPrimary : theme.textMuted }]}>
                     {item.label || "Untitled Alarm"}
                   </Text>
                 </View>
@@ -337,47 +396,43 @@ export const HomeScreen = () => {
                   {DAYS.map((day) => {
                     const isDayActive = activeDays.includes(day);
                     return (
-                      <Text
-                        key={day}
-                        style={[
-                          styles.dayTinyText,
-                          isDayActive && isActive
-                            ? styles.dayTinyTextActive
-                            : styles.dayTinyTextInactive,
-                        ]}
-                      >
+                      <Text key={day} style={[styles.dayTinyText, {
+                        color: isDayActive && isActive ? theme.textPrimary : theme.textMuted,
+                        opacity: isDayActive && isActive ? 1 : 0.4,
+                      }]}>
                         {day.charAt(0)}
                       </Text>
                     );
                   })}
                 </View>
               </View>
-
               <Switch
-                trackColor={{ false: colors.dot, true: colors.primary }}
-                thumbColor={colors.white}
-                ios_backgroundColor={colors.dot}
+                trackColor={{ false: theme.cardBorder, true: theme.primary }}
+                thumbColor="#FFFFFF"
+                ios_backgroundColor={theme.cardBorder}
                 onValueChange={() => toggleAlarm(item.id)}
                 value={isActive}
               />
             </View>
 
             <View style={styles.timeRow}>
-              <Text style={[styles.timeText, !isActive && styles.inactiveText]}>
-                {item.time}
-              </Text>
-              <Text
-                style={[styles.periodText, !isActive && styles.inactiveText]}
-              >
-                {item.period}
-              </Text>
+              {hasSplitTime ? (
+                <View style={styles.timeGroup}>
+                  <Text style={[styles.timeText, { color: isActive ? theme.textPrimary : theme.textMuted }]}>{hourPart}</Text>
+                  <Text style={[styles.timeSeparator, { color: theme.primary }]}>:</Text>
+                  <Text style={[styles.timeText, { color: isActive ? theme.textPrimary : theme.textMuted }]}>{minutePart}</Text>
+                </View>
+              ) : (
+                <Text style={[styles.timeText, { color: isActive ? theme.textPrimary : theme.textMuted }]}>{item.time}</Text>
+              )}
+              <View style={[styles.periodBadge, { backgroundColor: theme.primaryLight }]}>
+                <Text style={[styles.periodText, { color: theme.primary }]}>{item.period}</Text>
+              </View>
             </View>
 
-            <Text
-              style={[styles.alarmSubline, !isActive && styles.inactiveText]}
-            >
+            <Text style={[styles.alarmSubline, { color: theme.textMuted }]}>
               {isRinging ? (
-                <Text style={styles.liveStatusText}>
+                <Text style={[styles.liveStatusText, { color: theme.danger }]}>
                   {wakeSession.status === "verifying"
                     ? "AI Verifying..."
                     : wakeSession.status === "capturing"
@@ -389,91 +444,44 @@ export const HomeScreen = () => {
               )}
             </Text>
 
-            <View
-              style={[
-                styles.cardFooter,
-                !isActive && styles.cardFooterInactive,
-              ]}
-            >
-              <View
-                style={[
-                  styles.taskBadge,
-                  !isActive && styles.taskBadgeInactive,
-                ]}
-              >
-                <Ionicons
-                  name={challenge.icon}
-                  size={14}
-                  color={isActive ? colors.primary : colors.text.muted}
-                />
-                <Text
-                  style={[styles.taskText, !isActive && styles.inactiveText]}
-                >
-                  {isCustom ? item.task : item.task}
-                </Text>
+            <View style={[styles.cardFooter, { borderTopColor: theme.divider }, !isActive && styles.cardFooterInactive]}>
+              <View style={styles.footerBadges}>
+                <View style={[styles.taskBadge, { backgroundColor: theme.primaryLight }]}>
+                  <Ionicons name={challenge.icon} size={14} color={isActive ? theme.primary : theme.textMuted} />
+                  <Text style={[styles.taskText, { color: isActive ? theme.primary : theme.textMuted }]}>{item.task}</Text>
+                </View>
+                <View style={[styles.strictBadge, { borderColor: sMeta.color + "44", backgroundColor: sMeta.color + "12" }]}>
+                  <Ionicons name={sMeta.icon} size={12} color={sMeta.color} />
+                  <Text style={[styles.strictText, { color: sMeta.color }]}>{sMeta.label}</Text>
+                </View>
               </View>
-
-              <View
-                style={[
-                  styles.strictBadge,
-                  { borderColor: sMeta.color + "44" },
-                ]}
-              >
-                <Ionicons name={sMeta.icon} size={12} color={sMeta.color} />
-                <Text style={[styles.strictText, { color: sMeta.color }]}>
-                  {sMeta.label}
-                </Text>
-              </View>
-
-              <Ionicons
-                name={isExpanded ? "chevron-up" : "chevron-forward"}
-                size={18}
-                color={colors.border}
-                style={styles.cardChevron}
-              />
+              <Ionicons name={isExpanded ? "chevron-up" : "chevron-forward"} size={18} color={theme.textMuted} style={styles.cardChevron} />
             </View>
 
             {isExpanded ? (
-              <Animated.View
-                entering={FadeInDown.duration(200)}
-                style={styles.expandedPanel}
-              >
+              <Animated.View entering={FadeInDown.duration(200)} style={[styles.expandedPanel, { borderTopColor: theme.divider }]}>
                 {item.targets?.length > 0 && (
                   <View style={styles.targetRow}>
-                    <Text style={styles.expandedLabel}>Targets</Text>
+                    <Text style={[styles.expandedLabel, { color: theme.textMuted }]}>Targets</Text>
                     <View style={styles.targetTags}>
                       {item.targets.map((t, i) => (
-                        <View key={i} style={styles.targetTag}>
-                          <Text style={styles.targetTagText}>{t}</Text>
+                        <View key={i} style={[styles.targetTag, { backgroundColor: theme.surface }]}>
+                          <Text style={[styles.targetTagText, { color: theme.textSecondary }]}>{t}</Text>
                         </View>
                       ))}
                     </View>
                   </View>
                 )}
-
                 <View style={styles.expandedMetric}>
-                  <Text style={styles.expandedLabel}>Verification</Text>
-                  <Text style={styles.expandedValue}>
-                    {challenge.verificationMode || "Semantic AI"}
-                  </Text>
+                  <Text style={[styles.expandedLabel, { color: theme.textMuted }]}>Verification</Text>
+                  <Text style={[styles.expandedValue, { color: theme.textPrimary }]}>{challenge.verificationMode || "Semantic AI"}</Text>
                 </View>
-
                 <View style={styles.expandedMetric}>
-                  <Text style={styles.expandedLabel}>Success Rate</Text>
-                  <Text style={styles.expandedValue}>
-                    {item.completionRate ?? 100}%
-                  </Text>
+                  <Text style={[styles.expandedLabel, { color: theme.textMuted }]}>Success Rate</Text>
+                  <Text style={[styles.expandedValue, { color: theme.textPrimary }]}>{item.completionRate ?? 100}%</Text>
                 </View>
-
-                <TouchableOpacity
-                  style={styles.editButton}
-                  onPress={() => openSettings(item)}
-                >
-                  <Ionicons
-                    name="create-outline"
-                    size={16}
-                    color={colors.white}
-                  />
+                <TouchableOpacity style={[styles.editButton, { backgroundColor: theme.primary }]} onPress={() => openSettings(item)}>
+                  <Ionicons name="create-outline" size={16} color="#FFFFFF" />
                   <Text style={styles.editButtonText}>Edit Alarm</Text>
                 </TouchableOpacity>
               </Animated.View>
@@ -485,31 +493,41 @@ export const HomeScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <SafeAreaView style={styles.safeArea} edges={["top"]}>
-        <Header
-          name="Durgesh"
-          avatarUri="https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
-          activeCount={activeCount}
-          streakDays={wakeStats?.wakeStreak ?? 0}
-        />
-
-        <FlatList
-          data={groupedAlarms}
-          keyExtractor={(item) => item.id}
-          renderItem={renderAlarmCard}
-          ListHeaderComponent={renderHeader}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-        />
-
-        <TouchableOpacity
-          style={styles.fab}
-          activeOpacity={0.9}
-          onPress={() => openSettings(null)}
+        <Animated.View
+          entering={FadeInDown.duration(450)}
+          style={styles.screenContent}
         >
-          <Ionicons name="add" size={32} color={colors.white} />
-        </TouchableOpacity>
+          <Header
+            name="Durgesh"
+            avatarUri="https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
+            activeCount={activeCount}
+            streakDays={wakeStats?.wakeStreak ?? 0}
+          />
+
+          <FlatList
+            data={groupedAlarms}
+            keyExtractor={(item) => item.id}
+            renderItem={renderAlarmCard}
+            ListHeaderComponent={renderHeader}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+          />
+
+          <View style={styles.fabWrap} pointerEvents="box-none">
+            {isEmptyState ? (
+              <Animated.View style={[styles.fabPulse, { borderColor: theme.primary + "55" }]} />
+            ) : null}
+            <TouchableOpacity
+              style={[styles.fab, { backgroundColor: theme.primary }]}
+              activeOpacity={0.9}
+              onPress={() => openSettings(null)}
+            >
+              <Ionicons name="add" size={32} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
       </SafeAreaView>
 
       <AlarmSettingsModal
@@ -525,260 +543,373 @@ export const HomeScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1, backgroundColor: "#F2F0EB" },
   safeArea: { flex: 1 },
+  screenContent: { flex: 1 },
   listContent: {
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: 16,
     paddingBottom: 120,
-    paddingTop: spacing.sm,
+    paddingTop: 8,
   },
   dashboard: { marginBottom: spacing.md },
 
+  // ── Next Alarm Card ──────────────────────────────────────────
   nextAlarmCard: {
-    backgroundColor: "#1C1C1C",
-    borderRadius: 28,
-    padding: 24,
-    marginBottom: spacing.md,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
-    elevation: 8,
+    backgroundColor: "#1A2420",
+    borderRadius: 20,
+    padding: 22,
+    marginBottom: 12,
     overflow: "hidden",
   },
-  nextAlarmTopRow: {
+  naTopRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
+    marginBottom: 10,
   },
-  darkStatLabel: {
-    fontFamily: typography.family.bold,
+  naEyebrow: {
+    fontFamily: typography.family.semiBold,
     fontSize: 10,
     color: "rgba(255,255,255,0.4)",
-    textTransform: "uppercase",
     letterSpacing: 2,
+    textTransform: "uppercase",
   },
-  ringBadge: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: colors.primary,
+  naCountdownChip: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
+    gap: 5,
+    backgroundColor: "rgba(158,216,194,0.12)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
   },
-  nextAlarmText: {
+  naCountdownText: {
+    fontFamily: typography.family.semiBold,
+    fontSize: 11,
+    color: colors.dark.neon,
+    letterSpacing: 0.2,
+  },
+  naTimeRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 8,
+    marginBottom: 14,
+  },
+  naTime: {
     fontFamily: typography.family.extraBold,
-    fontSize: 42,
+    fontSize: 52,
     color: colors.white,
-    marginTop: 2,
+    letterSpacing: -2,
+    lineHeight: 56,
+  },
+  naPeriod: {
+    fontFamily: typography.family.bold,
+    fontSize: 18,
+    color: colors.dark.neon,
+    marginBottom: 8,
+    letterSpacing: 0.5,
+  },
+  naNoAlarm: {
+    fontFamily: typography.family.bold,
+    fontSize: 28,
+    color: "rgba(255,255,255,0.3)",
+    marginBottom: 14,
     letterSpacing: -0.5,
   },
-  nextAlarmBottomRow: {
+  naBottomRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: 20,
-    paddingTop: 16,
+    paddingTop: 14,
     borderTopWidth: 1,
     borderTopColor: "rgba(255,255,255,0.08)",
   },
-  nextAlarmSubtext: {
-    fontFamily: typography.family.bold,
-    fontSize: 14,
-    color: "rgba(255,255,255,0.6)",
+  naLabel: {
+    fontFamily: typography.family.medium,
+    fontSize: 13,
+    color: "rgba(255,255,255,0.5)",
+    flex: 1,
+    marginRight: 10,
   },
-  nextAlarmChip: {
-    backgroundColor: "rgba(226, 55, 68, 0.15)",
-    color: colors.primary,
-    fontFamily: typography.family.extraBold,
-    fontSize: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(226, 55, 68, 0.2)",
+  naChallengePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(18,107,95,0.35)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  naChallengeText: {
+    fontFamily: typography.family.semiBold,
+    fontSize: 11,
+    color: colors.dark.neon,
+    maxWidth: 100,
   },
 
-  statRow: { flexDirection: "row", gap: 12, marginBottom: spacing.md },
+  // ── Stat Row ────────────────────────────────────────────────
+  statRow: { flexDirection: "row", gap: 10, marginBottom: 12 },
   statCard: {
     flex: 1,
     backgroundColor: colors.white,
-    borderRadius: 24,
-    padding: 20,
+    borderRadius: 16,
+    padding: 18,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.02,
-    shadowRadius: 10,
-    elevation: 2,
+    borderColor: "#E8E4DC",
+  },
+  statCardPrimary: {
+    backgroundColor: "#1A2420",
+    borderColor: "#1A2420",
   },
   statIconShell: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: colors.primaryLight,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "#F0EDE6",
     alignItems: "center",
     justifyContent: "center",
   },
+  statIconShellPrimary: {
+    backgroundColor: "rgba(18,107,95,0.35)",
+  },
   statValue: {
-    fontFamily: typography.family.extraBold,
-    fontSize: 28,
+    fontFamily: typography.family.bold,
+    fontSize: 26,
     color: colors.text.primary,
     marginTop: 10,
     letterSpacing: -0.5,
   },
+  statValuePrimary: {
+    color: colors.white,
+  },
   statLabel: {
-    fontFamily: typography.family.bold,
+    fontFamily: typography.family.medium,
     fontSize: 10,
     color: colors.text.secondary,
     textTransform: "uppercase",
-    letterSpacing: 1.2,
+    letterSpacing: 1,
     marginTop: 2,
   },
+  statLabelPrimary: {
+    color: "rgba(255,255,255,0.6)",
+  },
 
+  // ── Recommendation Card ──────────────────────────────────────
   recommendationCard: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: "#fff",
-    borderRadius: 20,
+    alignItems: "stretch",
+    backgroundColor: colors.white,
+    borderRadius: 16,
     padding: 16,
     marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.02,
-    shadowRadius: 8,
+    borderColor: "#E8E4DC",
+    position: "relative",
+    overflow: "hidden",
+  },
+  recommendationBorder: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 3,
+    backgroundColor: colors.primary,
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
+  },
+  recommendationContent: {
+    flex: 1,
+    paddingLeft: 14,
+    gap: 8,
+  },
+  recommendationHeader: {
+    flexDirection: "row",
+    justifyContent: "flex-start",
+  },
+  aiBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    backgroundColor: colors.primaryLight,
+  },
+  aiBadgeText: {
+    fontFamily: typography.family.semiBold,
+    fontSize: 10,
+    color: colors.primary,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
   },
   recommendationText: {
     flex: 1,
-    fontFamily: typography.family.bold,
+    fontFamily: typography.family.medium,
     fontSize: 13,
-    color: "#475569",
-    lineHeight: 18,
+    color: colors.text.secondary,
+    lineHeight: 19,
   },
 
+  // ── Group Heading ────────────────────────────────────────────
   groupHeading: {
-    fontFamily: typography.family.extraBold,
-    fontSize: 15,
-    color: colors.text.primary,
-    marginBottom: 12,
+    fontFamily: typography.family.semiBold,
+    fontSize: 13,
+    color: colors.text.muted,
+    marginBottom: 10,
     marginTop: 4,
+    textTransform: "uppercase",
+    letterSpacing: 1,
   },
 
+  // ── Alarm Card ───────────────────────────────────────────────
   alarmCardInactive: {
-    opacity: 0.6,
+    opacity: 0.55,
+  },
+  alarmCardSurface: {
+    backgroundColor: colors.white,
+    borderColor: "#E8E4DC",
+    borderWidth: 1,
+    overflow: "hidden",
+    paddingLeft: spacing.md + 8,
   },
   alarmCardWrap: {
-    marginBottom: spacing.md,
+    marginBottom: 10,
+  },
+  alarmAccent: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    borderTopLeftRadius: 18,
+    borderBottomLeftRadius: 18,
   },
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 10,
+    marginBottom: 8,
   },
   headingContainer: { flex: 1 },
   alarmTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   statusDot: {
-    width: 8,
-    height: 8,
+    width: 7,
+    height: 7,
     borderRadius: 4,
-    backgroundColor: colors.text.muted,
+    backgroundColor: "#D0CCC4",
   },
   statusDotActive: {
     backgroundColor: colors.primary,
   },
   statusDotRinging: {
-    backgroundColor: "#FF3B30",
+    backgroundColor: colors.ringing,
   },
   alarmHeading: {
-    fontFamily: typography.family.bold,
-    fontSize: 17,
-    color: colors.text.primary,
-    marginBottom: 6,
-  },
-  dayIndicatorRow: { flexDirection: "row", gap: 8 },
-  dayTinyText: { fontSize: 11, fontFamily: typography.family.bold },
-  dayTinyTextActive: { color: colors.primary },
-  dayTinyTextInactive: { color: "#D1D1D1" },
-
-  timeRow: { flexDirection: "row", alignItems: "baseline", marginVertical: 6 },
-  timeText: {
-    fontFamily: typography.family.extraBold,
-    fontSize: 44,
-    color: colors.text.primary,
-    letterSpacing: 0,
-  },
-  periodText: {
-    fontFamily: typography.family.bold,
+    fontFamily: typography.family.semiBold,
     fontSize: 16,
     color: colors.text.primary,
-    marginLeft: 6,
-    opacity: 0.8,
+    marginBottom: 5,
   },
-  inactiveText: { color: "#BDBDBD" },
+  dayIndicatorRow: { flexDirection: "row", gap: 7 },
+  dayTinyText: { fontSize: 11, fontFamily: typography.family.medium },
+
+  timeRow: { flexDirection: "row", alignItems: "baseline", marginVertical: 4 },
+  timeGroup: { flexDirection: "row", alignItems: "baseline" },
+  timeText: {
+    fontFamily: typography.family.extraBold,
+    fontSize: 42,
+    color: colors.text.primary,
+    letterSpacing: -1,
+  },
+  timeSeparator: {
+    fontFamily: typography.family.extraBold,
+    fontSize: 42,
+    color: colors.primary,
+    marginHorizontal: 1,
+    letterSpacing: -1,
+  },
+  periodText: {
+    fontFamily: typography.family.semiBold,
+    fontSize: 11,
+    color: colors.primary,
+    letterSpacing: 0.4,
+  },
+  periodTextInactive: { color: colors.text.muted },
+  periodBadge: {
+    marginLeft: 8,
+    marginTop: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    backgroundColor: colors.primaryLight,
+    alignSelf: "flex-start",
+  },
   alarmSubline: {
-    fontFamily: typography.family.bold,
+    fontFamily: typography.family.regular,
     fontSize: 12,
-    color: colors.text.secondary,
+    color: colors.text.muted,
     marginBottom: 4,
+  },
+  liveStatusText: {
+    fontFamily: typography.family.semiBold,
+    fontSize: 12,
+    color: colors.ringing,
   },
 
   cardFooter: {
     flexDirection: "row",
     alignItems: "center",
     marginTop: 14,
-
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: "#F5F5F5",
-    gap: 8,
+    borderTopColor: "#F0EDE6",
   },
   cardFooterInactive: {
     borderTopWidth: 0,
     paddingTop: 0,
   },
 
+  footerBadges: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flex: 1,
+    flexWrap: "wrap",
+  },
+
   taskBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(226, 55, 68, 0.05)",
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
+    paddingVertical: 5,
+    borderRadius: 6,
+    minHeight: 26,
   },
-  taskBadgeInactive: { backgroundColor: "#F0F0F0" },
   taskText: {
-    fontFamily: typography.family.bold,
+    fontFamily: typography.family.medium,
     fontSize: 12,
     color: colors.primary,
-    marginLeft: 6,
+    marginLeft: 5,
   },
   strictBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 6,
     borderWidth: 1,
-    backgroundColor: "rgba(255,255,255,0.05)",
+    minHeight: 26,
   },
-  strictText: { fontFamily: typography.family.bold, fontSize: 11 },
+  strictText: { fontFamily: typography.family.medium, fontSize: 11 },
   cardChevron: { marginLeft: "auto" },
 
   expandedPanel: {
     marginTop: spacing.sm,
     paddingTop: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: "#F5F5F5",
+    borderTopColor: "#F0EDE6",
     gap: 12,
   },
   targetRow: {
@@ -790,13 +921,13 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   targetTag: {
-    backgroundColor: "rgba(0,0,0,0.05)",
+    backgroundColor: "#F0EDE6",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
   },
   targetTagText: {
-    fontFamily: typography.family.bold,
+    fontFamily: typography.family.medium,
     fontSize: 11,
     color: colors.text.secondary,
   },
@@ -806,12 +937,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   expandedLabel: {
-    fontFamily: typography.family.bold,
+    fontFamily: typography.family.medium,
     fontSize: 12,
-    color: colors.text.secondary,
+    color: colors.text.muted,
   },
   expandedValue: {
-    fontFamily: typography.family.bold,
+    fontFamily: typography.family.semiBold,
     fontSize: 12,
     color: colors.text.primary,
   },
@@ -819,44 +950,59 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
     marginTop: 6,
-    backgroundColor: colors.text.primary,
-    borderRadius: 14,
+    backgroundColor: colors.primary,
+    borderRadius: 10,
     paddingVertical: 11,
     alignItems: "center",
     justifyContent: "center",
   },
-  editButtonText: { color: colors.white, fontFamily: typography.family.bold },
+  editButtonText: { color: colors.white, fontFamily: typography.family.semiBold, fontSize: 14 },
+
+  // ── Swipe Actions ────────────────────────────────────────────
   swipeActions: {
     flexDirection: "row",
     height: "88%",
-    marginBottom: spacing.md,
+    marginBottom: 10,
   },
   swipeButton: {
     width: 58,
+    height: "100%",
+    borderRadius: 0,
     justifyContent: "center",
     alignItems: "center",
   },
-  duplicateButton: { backgroundColor: colors.text.primary },
+  duplicateButton: { backgroundColor: "#3D4A46" },
   deleteButton: {
-    backgroundColor: colors.primary,
-    borderTopRightRadius: 24,
-    borderBottomRightRadius: 24,
+    backgroundColor: colors.danger,
+    borderTopRightRadius: 16,
+    borderBottomRightRadius: 16,
   },
 
-  fab: {
+  // ── FAB ──────────────────────────────────────────────────────
+  fabWrap: {
     position: "absolute",
     bottom: spacing.lg,
     right: spacing.lg,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 80,
+    height: 80,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  fabPulse: {
+    position: "absolute",
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    borderWidth: 2,
+    borderColor: "rgba(18,107,95,0.3)",
+    backgroundColor: "transparent",
+  },
+  fab: {
+    width: 58,
+    height: 58,
+    borderRadius: 16,
     backgroundColor: colors.primary,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 8,
   },
 });

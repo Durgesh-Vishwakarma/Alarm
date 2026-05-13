@@ -1,10 +1,10 @@
 import {
-  Outfit_400Regular,
-  Outfit_500Medium,
-  Outfit_600SemiBold,
-  Outfit_700Bold,
-  Outfit_800ExtraBold,
-  useFonts
+    Outfit_400Regular,
+    Outfit_500Medium,
+    Outfit_600SemiBold,
+    Outfit_700Bold,
+    Outfit_800ExtraBold,
+    useFonts
 } from '@expo-google-fonts/outfit';
 import Constants from 'expo-constants';
 import { Stack } from 'expo-router';
@@ -13,6 +13,7 @@ import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AlarmRuntimeProvider } from '../src/components/AlarmRuntimeProvider';
+import { ThemeProvider } from '../src/theme/ThemeContext';
 
 /**
  * Root Layout
@@ -92,18 +93,19 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <AlarmRuntimeProvider>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="index" />
-            <Stack.Screen 
-              name="wake-up" 
-              options={{ 
-                gestureEnabled: false, // Prevent swiping back from verification
-              }} 
-            />
-          </Stack>
-          {/* Note: Global StatusBar removed to allow per-screen light/dark control */}
-        </AlarmRuntimeProvider>
+        <ThemeProvider>
+          <AlarmRuntimeProvider>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="index" />
+              <Stack.Screen 
+                name="wake-up" 
+                options={{ 
+                  gestureEnabled: false,
+                }} 
+              />
+            </Stack>
+          </AlarmRuntimeProvider>
+        </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

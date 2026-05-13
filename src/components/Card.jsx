@@ -1,15 +1,7 @@
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { colors, spacing } from "../theme";
+import { useTheme } from "../theme/ThemeContext";
 
-/**
- * SnapWake Premium Card
- * A robust surface component designed for the SnapWake futuristic HUD identity.
- * Replaces legacy glassmorphism with crisp, state-driven surfaces that align
- * perfectly with the app's typography and color system.
- *
- * @param {('default'|'active'|'ringing'|'success'|'danger'|'failed'|'hud')} variant - Visual style variant
- * @param {('none'|'sm'|'md'|'lg'|'xl')} padding - Inner spacing level from theme
- */
 export const Card = ({
   children,
   style,
@@ -18,18 +10,32 @@ export const Card = ({
   onPress,
   ...touchableProps
 }) => {
+  const { theme } = useTheme();
   const Component = onPress ? TouchableOpacity : View;
 
-  const variantStyles = [
-    styles.container,
-    padding !== "none" && { padding: spacing[padding] || spacing.lg },
-    styles[variant],
-    style,
-  ];
+  // Base card uses theme tokens; variant overrides for special states
+  const variantStyle = variant === "hud"
+    ? { backgroundColor: theme.heroCard, borderColor: theme.heroBorder }
+    : variant === "active"
+    ? { backgroundColor: theme.card, borderColor: theme.primary }
+    : variant === "ringing"
+    ? { backgroundColor: theme.card, borderColor: colors.ringing, borderWidth: 1.5 }
+    : variant === "success"
+    ? { backgroundColor: theme.card, borderColor: colors.success, borderWidth: 1.5 }
+    : variant === "danger"
+    ? { backgroundColor: theme.card, borderColor: theme.danger, borderWidth: 1.5 }
+    : variant === "failed"
+    ? { backgroundColor: theme.surface, borderColor: theme.cardBorder, opacity: 0.7 }
+    : { backgroundColor: theme.card, borderColor: theme.cardBorder };
 
   return (
     <Component
-      style={variantStyles}
+      style={[
+        styles.container,
+        padding !== "none" && { padding: spacing[padding] || spacing.lg },
+        variantStyle,
+        style,
+      ]}
       {...(onPress ? { onPress, activeOpacity: 0.88, ...touchableProps } : {})}
     >
       {children}
@@ -39,55 +45,7 @@ export const Card = ({
 
 const styles = StyleSheet.create({
   container: {
-    // Primary surface identity
-    backgroundColor: colors.card,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: colors.primary,
-  },
-
-  // --- SEMANTIC VARIANTS ---
-
-  default: {},
-
-  active: {
-    borderColor: colors.primary,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-  },
-
-  ringing: {
-    backgroundColor: colors.card,
-    borderColor: colors.ringing,
-    borderWidth: 1.5,
-  },
-
-  success: {
-    borderColor: colors.success,
-    backgroundColor: colors.card,
-    borderWidth: 1.5,
-  },
-
-  danger: {
-    borderColor: colors.danger,
-    backgroundColor: colors.card,
-    borderWidth: 1.5,
-  },
-
-  failed: {
-    borderColor: colors.dot,
-    backgroundColor: colors.surface,
-    opacity: 0.7,
-  },
-
-  /**
-   * HUD VARIANT
-   * Optimized for dark-mode immersive screens (WakeUp, Camera HUD).
-   * Uses the deep obsidian surface tokens.
-   */
-  hud: {
-    backgroundColor: colors.dark.card,
-    borderColor: colors.dark.border,
+    borderRadius: 20,
     borderWidth: 1,
   },
 });
