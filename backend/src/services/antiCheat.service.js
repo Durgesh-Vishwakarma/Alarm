@@ -74,67 +74,43 @@ export const runAntiCheatChecks = async ({
     }
 
     // ----------------------------------------
-    // Read image metadata
+    // Read image metadata and analyze statistics
     // ----------------------------------------
     let metadata;
+    let stats;
 
     try {
-      metadata = await sharp(image).metadata();
+      const sharpImage = sharp(image);
+      [metadata, stats] = await Promise.all([
+        sharpImage.metadata(),
+        sharpImage.greyscale().stats(),
+      ]);
     } catch {
       return {
         passed: false,
-        reason:
-          'Uploaded image could not be processed.',
+        reason: 'Uploaded image could not be processed.',
       };
     }
 
     // ----------------------------------------
     // Validate resolution
     // ----------------------------------------
-    if (
-      !metadata.width ||
-      !metadata.height
-    ) {
+    if (!metadata.width || !metadata.height) {
       return {
         passed: false,
-        reason:
-          'Image dimensions are invalid.',
+        reason: 'Image dimensions are invalid.',
       };
     }
 
-    if (
-      metadata.width < MIN_WIDTH ||
-      metadata.height < MIN_HEIGHT
-    ) {
+    if (metadata.width < MIN_WIDTH || metadata.height < MIN_HEIGHT) {
       return {
         passed: false,
-        reason:
-          'Image resolution is too low.',
+        reason: 'Image resolution is too low.',
       };
     }
 
-    // ----------------------------------------
-    // Analyze image statistics
-    // ----------------------------------------
-    let stats;
-
-    try {
-      stats = await sharp(image)
-        .greyscale()
-        .stats();
-    } catch {
-      return {
-        passed: false,
-        reason:
-          'Failed to analyze image.',
-      };
-    }
-
-    const mean =
-      stats.channels?.[0]?.mean ?? 0;
-
-    const stdev =
-      stats.channels?.[0]?.stdev ?? 0;
+    const mean = stats.channels?.[0]?.mean ?? 0;
+    const stdev = stats.channels?.[0]?.stdev ?? 0;
 
     // ----------------------------------------
     // Detect extremely dark images
@@ -142,8 +118,7 @@ export const runAntiCheatChecks = async ({
     if (mean < MIN_BRIGHTNESS) {
       return {
         passed: false,
-        reason:
-          'Frame is too dark. Improve lighting.',
+        reason: 'Frame is too dark. Improve lighting.',
       };
     }
 
