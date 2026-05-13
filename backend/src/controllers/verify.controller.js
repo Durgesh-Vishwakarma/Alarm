@@ -6,6 +6,7 @@ import { logVerificationResult } from "../services/history.service.js";
 
 const bodySchema = z.object({
   alarmId: z.string().min(1),
+  userId: z.string().optional(),
   challengeId: z.string().min(1),
   challengeTitle: z.string().min(1),
 
@@ -74,6 +75,7 @@ export const verifyWakeChallenge = async (req, res) => {
     if (!antiCheat.passed) {
       await logVerificationResult({
         alarmId: payload.alarmId,
+        userId: payload.userId,
         challengeId: payload.challengeId,
         success: false,
         confidence: 0,
@@ -107,6 +109,7 @@ export const verifyWakeChallenge = async (req, res) => {
     // ------------------------------------------------
     await logVerificationResult({
       alarmId: payload.alarmId,
+      userId: payload.userId,
       challengeId: payload.challengeId,
 
       success: result.success,

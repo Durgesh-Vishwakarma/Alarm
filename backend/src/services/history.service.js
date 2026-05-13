@@ -1,159 +1,79 @@
-import pg from "pg";
-import { readFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { PrismaClient } from "@prisma/client";
 
-const { Pool } = pg;
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
-// ----------------------------------------------------
-// Create PostgreSQL connection pool
-// ----------------------------------------------------
-const pool = process.env.DATABASE_URL
-  ? new Pool({
-      connectionString: process.env.DATABASE_URL,
-
-      ssl:
-        process.env.NODE_ENV === "production"
-          ? {
-              rejectUnauthorized: false,
-            }
-          : false,
-
-      max: 10,
-      idleTimeoutMillis: 30_000,
-      connectionTimeoutMillis: 10_000,
-    })
-  : null;
-
-  
-// ----------------------------------------------------
-// PostgreSQL connection test
-// ----------------------------------------------------
-if (pool) {
-  pool
-    .connect()
-    .then((client) => {
-      console.log("✅ PostgreSQL connected successfully");
-
-      client.release();
-    })
-    .catch((error) => {
-      console.error(
-        "❌ PostgreSQL connection failed:",
-        error?.message || error,
-      );
-    });
-}
-
-
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL,
+    },
+  },
+});
 
 let dbDisabled = false;
-let initPromise = null;
 
-const initializeDatabase = async () => {
-  if (!pool || dbDisabled) return;
-  if (initPromise) return initPromise;
+const isConnectionError = (error) => {
+  const code = error?.code;
+  return (
+    code === "P1000" ||
+    code === "P1001" ||
+    code === "P1002" ||
+    code === "P1003" ||
+    code === "P1005" ||
+    code === "P1006" ||
+    code === "P1013"
+  );
+};
 
-  initPromise = (async () => {
-    try {
-      const schema = await readFile(join(__dirname, "schema.sql"), "utf8");
-      await pool.query(schema);
-      await pool.query(`
-        ALTER TABLE challenge_results
-        ALTER COLUMN alarm_id DROP NOT NULL
-      `);
-    } catch (error) {
-      dbDisabled = true;
-      console.warn(
-        "PostgreSQL logging disabled:",
-        error?.message || error,
-      );
-    }
-  })();
+const resolveAlarmId = async (alarmId) => {
+  if (!alarmId) return null;
 
-  return initPromise;
+  const alarm = await prisma.alarm.findUnique({
+    where: { id: alarmId },
+    select: { id: true },
+  });
+
+  return alarm?.id ?? null;
 };
 
 // ----------------------------------------------------
 // Log verification result
 // ----------------------------------------------------
 export const logVerificationResult = async (entry = {}) => {
-  // Database disabled
-  if (!pool || dbDisabled) {
+  if (!process.env.DATABASE_URL || dbDisabled) {
     return;
   }
 
   try {
-    await initializeDatabase();
-    if (dbDisabled) return;
-
     const {
       alarmId = null,
+      userId = null,
       challengeId = null,
-
       success = false,
       confidence = 0,
-
       reason = "Unknown result",
-
       labels = [],
-
       provider = null,
     } = entry;
 
-    // Normalize labels safely
     const normalizedLabels = Array.isArray(labels) ? labels : [];
+    const resolvedAlarmId = await resolveAlarmId(alarmId);
 
-    // Insert verification result
-    await pool.query(
-      `
-      INSERT INTO challenge_results (
-        alarm_id,
-        challenge_id,
-        success,
-        confidence,
-        reason,
-        provider,
-        labels,
-        created_at
-      )
-      VALUES (
-        (SELECT id FROM alarms WHERE id = $1),
-        $2,
-        $3,
-        $4,
-        $5,
-        $6,
-        $7,
-        NOW()
-      )
-      `,
-      [
-        alarmId,
+    await prisma.challengeResult.create({
+      data: {
+        alarmId: resolvedAlarmId,
+        userId,
         challengeId,
-
         success,
         confidence,
-
         reason,
         provider,
-
-        JSON.stringify(normalizedLabels),
-      ],
-    );
+        labels: normalizedLabels,
+        metadata: {},
+      },
+    });
   } catch (error) {
-    if (
-      error?.code === "ECONNREFUSED" ||
-      error?.code === "ENOTFOUND" ||
-      error?.code === "28P01" ||
-      error?.code === "3D000"
-    ) {
+    if (isConnectionError(error)) {
       dbDisabled = true;
-      console.warn(
-        "PostgreSQL logging disabled:",
-        error?.message || error,
-      );
+      console.warn("PostgreSQL logging disabled:", error?.message || error);
       return;
     }
 
@@ -168,15 +88,10 @@ export const logVerificationResult = async (entry = {}) => {
 // Optional graceful shutdown
 // ----------------------------------------------------
 export const closeDatabasePool = async () => {
-  if (!pool) {
-    return;
-  }
-
   try {
-    await pool.end();
-
-    console.log("PostgreSQL pool closed.");
+    await prisma.$disconnect();
+    console.log("Prisma client disconnected.");
   } catch (error) {
-    console.error("Failed to close PostgreSQL pool:", error);
+    console.error("Failed to close Prisma client:", error);
   }
 };

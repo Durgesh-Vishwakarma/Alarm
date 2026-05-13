@@ -1,12 +1,34 @@
 import sharp from "sharp";
 import { buildPrompt } from "./prompts.js";
 import { verifyWithGemini } from "./providers/gemini.provider.js";
-import { verifyWithHuggingFace } from "./providers/huggingface.provider.js";
-import { verifyWithOpenRouter } from "./providers/openrouter.provider.js";
 
 const allowLocalAiFallback =
   process.env.ALLOW_LOCAL_AI_FALLBACK !== "false" &&
   process.env.NODE_ENV !== "production";
+
+const providerEnvMap = {
+  gemini: "GEMINI_API_KEY",
+};
+
+const validateProviderEnv = () => {
+  const provider = (process.env.AI_PROVIDER || "gemini").toLowerCase();
+  const requiredEnv = providerEnvMap[provider];
+
+  if (!requiredEnv) {
+    console.warn(
+      `WARNING: AI_PROVIDER "${provider}" is invalid. Expected: gemini.`,
+    );
+    return;
+  }
+
+  if (!process.env[requiredEnv]) {
+    console.warn(
+      `WARNING: ${requiredEnv} is missing for AI_PROVIDER="${provider}".`,
+    );
+  }
+};
+
+validateProviderEnv();
 
 const getProvider = () => {
   const provider = (process.env.AI_PROVIDER || "gemini").toLowerCase();
@@ -18,10 +40,6 @@ const getProvider = () => {
   switch (provider) {
     case "gemini":
       return verifyWithGemini;
-    case "openrouter":
-      return verifyWithOpenRouter;
-    case "huggingface":
-      return verifyWithHuggingFace;
     default:
       throw new Error(`Invalid AI provider: ${provider}`);
   }
