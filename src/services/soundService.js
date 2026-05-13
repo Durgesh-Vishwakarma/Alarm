@@ -1,4 +1,5 @@
 import { createAudioPlayer, setAudioModeAsync } from "expo-audio";
+import { RINGTONE_SOURCES } from "../data/ringtones";
 
 let player = null;
 let isStarting = false;
@@ -21,20 +22,19 @@ export const initializeAudio = async () => {
   }
 };
 
-export const startAlarmSound = async () => {
+export const startAlarmSound = async (ringtone = "alarm_neon") => {
   try {
     if (player || isStarting) return;
     if (!soundAvailable) return;
-    isStarting = true;
+    if (!ringtone || ringtone === "Silent") return;
 
-    let source;
-    try {
-      source = require("../../assets/sounds/alarm_neon.mp3");
-    } catch (_error) {
+    const source = RINGTONE_SOURCES[ringtone];
+    if (!source) {
       soundAvailable = false;
       return;
     }
 
+    isStarting = true;
     player = createAudioPlayer(source);
     player.loop = true;
     player.volume = 1.0;

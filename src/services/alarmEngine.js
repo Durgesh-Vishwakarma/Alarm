@@ -26,7 +26,7 @@ export const startAlarm = async (
     });
 
     await presentAlarmNotification(dueAlarm);
-    await startAlarmSound();
+    await startAlarmSound(dueAlarm.ringtone);
 
     // Navigation
     router.replace({

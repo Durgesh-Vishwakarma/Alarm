@@ -1,0 +1,1 @@
+iOS uses normal notifications by default. To enable Critical Alerts, Apple must approve the entitlement for your app.

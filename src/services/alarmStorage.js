@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from "expo-file-system/legacy";
 
 /**
  * SnapWake Production Storage Service
@@ -6,25 +6,26 @@ import * as FileSystem from 'expo-file-system/legacy';
  */
 
 const STORAGE_FILE = `${FileSystem.documentDirectory}snapwake-v2-alarms.json`;
-const ONBOARDING_KEY = 'snapwake-onboarding-complete';
+const ONBOARDING_KEY = "snapwake-onboarding-complete";
+const PERMISSIONS_KEY = "snapwake-permissions-complete";
 const STORAGE_VERSION = 2;
 
 // Seed data used only during development
 const SEED_ALARMS = [
   {
-    id: 'seed-1',
-    time: '06:00',
-    period: 'AM',
-    label: 'Morning Rhythm',
-    challengeTitle: 'Scan Toothbrush',
-    challengeId: 'toothbrush',
-    targets: ['toothbrush', 'mirror'],
-    antiCheatStrictness: 'Strict',
-    verificationMode: 'AI Semantic Verification',
-    repeatDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+    id: "seed-1",
+    time: "06:00",
+    period: "AM",
+    label: "Morning Rhythm",
+    challengeTitle: "Scan Toothbrush",
+    challengeId: "toothbrush",
+    targets: ["toothbrush", "mirror"],
+    antiCheatStrictness: "Strict",
+    verificationMode: "AI Semantic Verification",
+    repeatDays: ["Mon", "Tue", "Wed", "Thu", "Fri"],
     isActive: true,
     completionRate: 100,
-  }
+  },
 ];
 
 /**
@@ -35,13 +36,13 @@ const generateId = () => {
 };
 
 /**
- * Loads alarms from storage. 
+ * Loads alarms from storage.
  * Includes self-healing for corrupted files and legacy data normalization.
  */
 export const loadAlarms = async () => {
   try {
     const info = await FileSystem.getInfoAsync(STORAGE_FILE);
-    
+
     if (!info.exists) {
       const initial = __DEV__ ? SEED_ALARMS : [];
       await saveAlarms(initial);
@@ -49,32 +50,32 @@ export const loadAlarms = async () => {
     }
 
     const raw = await FileSystem.readAsStringAsync(STORAGE_FILE);
-    
+
     let data;
     try {
       data = JSON.parse(raw);
     } catch (_parseError) {
-      if (__DEV__) console.warn('[Storage] Corrupted file, resetting data.');
+      if (__DEV__) console.warn("[Storage] Corrupted file, resetting data.");
       await saveAlarms([]);
       return [];
     }
 
     // Handle both legacy (array-only) and versioned (object) formats
     const alarms = data.version ? data.alarms : data;
-    
+
     if (!Array.isArray(alarms)) return [];
 
     // Normalize and repair data (e.g., mapping old 'task' to 'challengeTitle')
     return alarms.map((alarm) => ({
       ...alarm,
-      challengeTitle: alarm.challengeTitle || alarm.task || 'AI Challenge',
+      challengeTitle: alarm.challengeTitle || alarm.task || "AI Challenge",
       targets: Array.isArray(alarm.targets) ? alarm.targets : [],
-      antiCheatStrictness: alarm.antiCheatStrictness || 'Standard',
-      verificationMode: alarm.verificationMode || 'AI Verification',
+      antiCheatStrictness: alarm.antiCheatStrictness || "Standard",
+      verificationMode: alarm.verificationMode || "AI Verification",
       completionRate: alarm.completionRate ?? 100,
     }));
   } catch (error) {
-    if (__DEV__) console.warn('[Storage] Critical load error:', error);
+    if (__DEV__) console.warn("[Storage] Critical load error:", error);
     return [];
   }
 };
@@ -89,9 +90,12 @@ export const saveAlarms = async (alarms) => {
       alarms,
       lastSavedAt: new Date().toISOString(),
     };
-    await FileSystem.writeAsStringAsync(STORAGE_FILE, JSON.stringify(payload, null, 2));
+    await FileSystem.writeAsStringAsync(
+      STORAGE_FILE,
+      JSON.stringify(payload, null, 2),
+    );
   } catch (error) {
-    if (__DEV__) console.error('[Storage] Save error:', error);
+    if (__DEV__) console.error("[Storage] Save error:", error);
   }
 };
 
@@ -109,20 +113,22 @@ export const upsertAlarm = async (alarms, payload) => {
   const normalizedPayload = {
     ...payload,
     id,
-    challengeTitle: payload.challengeTitle || payload.task || 'AI Challenge',
+    challengeTitle: payload.challengeTitle || payload.task || "AI Challenge",
     targets: Array.isArray(payload.targets) ? payload.targets : [],
-    antiCheatStrictness: payload.antiCheatStrictness || 'Standard',
+    antiCheatStrictness: payload.antiCheatStrictness || "Standard",
     updatedAt: now,
   };
 
   const nextAlarms = isEdit
-    ? alarms.map((alarm) => (alarm.id === id ? { ...alarm, ...normalizedPayload } : alarm))
+    ? alarms.map((alarm) =>
+        alarm.id === id ? { ...alarm, ...normalizedPayload } : alarm,
+      )
     : [
-        { 
-          ...normalizedPayload, 
-          createdAt: now
-        }, 
-        ...alarms
+        {
+          ...normalizedPayload,
+          createdAt: now,
+        },
+        ...alarms,
       ];
 
   await saveAlarms(nextAlarms);
@@ -143,12 +149,28 @@ export const deleteAlarm = async (alarms, id) => {
  */
 export const setOnboardingComplete = async () => {
   await FileSystem.writeAsStringAsync(
-    `${FileSystem.documentDirectory}${ONBOARDING_KEY}`, 
-    'true'
+    `${FileSystem.documentDirectory}${ONBOARDING_KEY}`,
+    "true",
   );
 };
 
 export const checkOnboardingComplete = async () => {
-  const info = await FileSystem.getInfoAsync(`${FileSystem.documentDirectory}${ONBOARDING_KEY}`);
+  const info = await FileSystem.getInfoAsync(
+    `${FileSystem.documentDirectory}${ONBOARDING_KEY}`,
+  );
+  return info.exists;
+};
+
+export const setPermissionsComplete = async () => {
+  await FileSystem.writeAsStringAsync(
+    `${FileSystem.documentDirectory}${PERMISSIONS_KEY}`,
+    "true",
+  );
+};
+
+export const checkPermissionsComplete = async () => {
+  const info = await FileSystem.getInfoAsync(
+    `${FileSystem.documentDirectory}${PERMISSIONS_KEY}`,
+  );
   return info.exists;
 };

@@ -1,6 +1,7 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 import { getNextAlarmDate, to24Hour } from "./alarmRuntime";
+import { cancelNativeAlarm, scheduleNativeAlarm } from "./alarmScheduler";
 
 /**
  * SnapWake Native Notification Service
@@ -219,6 +220,15 @@ export const presentAlarmNotification = async (alarm) => {
  */
 export const rescheduleAlarm = async (previousAlarm, nextAlarm) => {
   try {
+    if (Platform.OS === "android") {
+      if (previousAlarm?.id) {
+        await cancelNativeAlarm(previousAlarm.id);
+      }
+      if (nextAlarm?.isActive) {
+        await scheduleNativeAlarm(nextAlarm);
+      }
+      return { ...nextAlarm, notificationIds: [], notificationId: undefined };
+    }
     await cancelAlarmNotification(previousAlarm);
     const notificationIds = await scheduleAlarmNotification(nextAlarm);
 
