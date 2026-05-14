@@ -5,7 +5,7 @@ import { AI_CHALLENGES } from "../../../data/challengeCatalog";
 
 export const ChallengeSection = ({ form, set, theme }) => (
   <View style={s.container}>
-    <Text style={[s.label, { color: theme.textSecondary }]}>CHOOSE CHALLENGE</Text>
+    <Text style={[s.label, { color: theme.textSecondary }]}>Choose challenge</Text>
 
     <View style={s.grid}>
       {AI_CHALLENGES.map((item) => {
@@ -67,11 +67,10 @@ export const ChallengeSection = ({ form, set, theme }) => (
 const s = StyleSheet.create({
   container: { marginTop: tokens.spacing.md },
   label: {
-    fontFamily: typography.family.metadata,
-    fontSize: 12,
-    letterSpacing: 1.5,
+    ...typography.styles.caption,
     marginBottom: tokens.spacing.lg,
     paddingHorizontal: 4,
+    opacity: 0.58,
   },
   grid: {
     flexDirection: "row",
@@ -97,14 +96,13 @@ const s = StyleSheet.create({
   },
   cardText: { flex: 1 },
   cardTitle: {
-    fontFamily: typography.family.card,
-    fontSize: 13,
+    fontFamily: typography.family.semiBold,
+    fontSize: 14,
     marginBottom: 2,
   },
   difficulty: {
-    fontFamily: typography.family.metadata,
-    fontSize: 10,
-    textTransform: "uppercase",
+    ...typography.styles.caption,
+    opacity: 0.58,
   },
   customBox: {
     marginTop: tokens.spacing.lg,
@@ -114,13 +112,10 @@ const s = StyleSheet.create({
     gap: tokens.spacing.sm,
   },
   customLabel: {
-    fontFamily: typography.family.metadata,
-    fontSize: 12,
-    letterSpacing: 0.5,
+    ...typography.styles.caption,
   },
   customHint: {
-    fontFamily: typography.family.metadata,
-    fontSize: 11,
+    ...typography.styles.caption,
     marginTop: tokens.spacing.xs,
   },
   input: {
@@ -128,7 +123,6 @@ const s = StyleSheet.create({
     borderRadius: tokens.radius.md,
     paddingHorizontal: tokens.spacing.md,
     paddingVertical: tokens.spacing.sm,
-    fontFamily: typography.family.metadata,
-    fontSize: 15,
+    ...typography.styles.body,
   },
 });

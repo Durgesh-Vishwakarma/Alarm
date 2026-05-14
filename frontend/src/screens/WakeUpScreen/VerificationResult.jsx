@@ -50,7 +50,7 @@ export const VerificationResult = ({ success, message, onRetry, theme }) => {
         <Animated.View entering={FadeInDown.delay(600)} style={s.successFooter}>
            <View style={s.xpBadge}>
              <Ionicons name="sparkles" size={14} color="#F59E0B" />
-             <Text style={s.xpTxt}>+25 XP EARNED</Text>
+             <Text style={s.xpTxt}>+25 XP earned</Text>
            </View>
         </Animated.View>
       ) : (
@@ -59,7 +59,7 @@ export const VerificationResult = ({ success, message, onRetry, theme }) => {
           style={[s.btn, { backgroundColor: tokens.colors.primary }]} 
           onPress={handleRetry}
         >
-          <Text style={s.btnTxt}>Try Verification Again</Text>
+          <Text style={s.btnTxt}>Try verification again</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -94,17 +94,13 @@ const s = StyleSheet.create({
     zIndex: -1 
   },
   title: { 
-    fontFamily: typography.family.section, 
-    fontSize: tokens.typography.size.section, 
+    ...typography.styles.titleLarge,
     textAlign: "center",
     marginBottom: tokens.spacing.md,
-    letterSpacing: -1,
   },
   subtitle: { 
-    fontFamily: typography.family.metadata, 
-    fontSize: tokens.typography.size.body, 
+    ...typography.styles.body,
     textAlign: "center", 
-    lineHeight: tokens.typography.size.body * 1.5,
     paddingHorizontal: tokens.spacing.xl,
     opacity: 0.8,
   },
@@ -119,9 +115,7 @@ const s = StyleSheet.create({
   },
   btnTxt: { 
     color: "#FFF", 
-    fontFamily: typography.family.card, 
-    fontSize: tokens.typography.size.card,
-    letterSpacing: 0.5,
+    ...typography.styles.body,
   },
   successFooter: { marginTop: tokens.spacing.massive, alignItems: "center" },
   xpBadge: {
@@ -136,9 +130,7 @@ const s = StyleSheet.create({
     borderColor: "rgba(245, 158, 11, 0.2)",
   },
   xpTxt: { 
-    fontFamily: typography.family.metadata, 
-    fontSize: tokens.typography.size.caption, 
+    ...typography.styles.caption,
     color: "#F59E0B", 
-    letterSpacing: 1.5,
   },
 });

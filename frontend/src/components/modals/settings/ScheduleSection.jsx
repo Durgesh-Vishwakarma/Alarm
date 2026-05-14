@@ -13,7 +13,7 @@ export const ScheduleSection = ({ form, set, theme }) => {
 
   return (
     <View style={s.container}>
-      <Text style={[s.label, { color: theme.textSecondary }]}>REPEAT SCHEDULE</Text>
+      <Text style={[s.label, { color: theme.textSecondary }]}>Repeat schedule</Text>
       <View style={s.daysRow}>
         {DAYS.map((day) => {
           const isSelected = form.repeatDays.includes(day);
@@ -40,11 +40,10 @@ export const ScheduleSection = ({ form, set, theme }) => {
 const s = StyleSheet.create({
   container: { marginTop: tokens.spacing.sm },
   label: { 
-    fontFamily: typography.family.metadata, 
-    fontSize: 12, 
-    letterSpacing: 1.5, 
+    ...typography.styles.caption,
     marginBottom: tokens.spacing.lg,
     paddingHorizontal: 4,
+    opacity: 0.58,
   },
   daysRow: { flexDirection: "row", justifyContent: "space-between" },
   dayCircle: { 
@@ -55,7 +54,7 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   dayTxt: { 
-    fontFamily: typography.family.card, 
+    fontFamily: typography.family.semiBold,
     fontSize: 15,
   },
 });

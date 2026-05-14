@@ -1,49 +1,57 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { StatusBar } from "expo-status-bar";
 import { router } from "expo-router";
 import { useRef, useState } from "react";
-import { StyleSheet, Text, useWindowDimensions, View, ImageBackground } from "react-native";
+import {
+  ImageBackground,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import Animated, {
-  interpolate,
   useAnimatedScrollHandler,
-  useAnimatedStyle,
   useSharedValue,
   FadeInDown,
 } from "react-native-reanimated";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { setOnboardingComplete } from "../services/alarmStorage";
-import { tokens, typography } from "../theme";
+import { tokens } from "../theme";
 import { haptics } from "../services/hapticService";
-import { GlassCard } from "../components/GlassCard";
+import { PrimaryButton } from "../components/PrimaryButton";
 
-const OnboardingSlide = ({ item, index, scrollX, width }) => {
-  const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
+const SLIDES = [
+  {
+    id: "1",
+    bg: require("../../assets/images/onboarding/bg1.png"),
+  },
+  {
+    id: "2",
+    bg: require("../../assets/images/onboarding/bg2.png"),
+  },
+  {
+    id: "3",
+    bg: require("../../assets/images/onboarding/bg3.png"),
+  },
+];
 
-  const animatedTextStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollX.value, inputRange, [0, 1, 0]),
-    transform: [{ translateY: interpolate(scrollX.value, inputRange, [40, 0, 40]) }],
-  }));
-
+const OnboardingSlide = ({ item, width }) => {
   return (
     <View style={[styles.slideContainer, { width }]}>
-      <ImageBackground 
-        source={item.bg} 
+      <ImageBackground
+        source={item.bg}
         style={StyleSheet.absoluteFillObject}
+        imageStyle={styles.slideImage}
         resizeMode="cover"
       >
         <LinearGradient
-          colors={["rgba(2, 6, 23, 0.15)", "rgba(2, 6, 23, 0.45)", "rgba(2, 6, 23, 0.88)"]}
+          colors={[
+            "rgba(2, 6, 23, 0)",
+            "rgba(2, 6, 23, 0.08)",
+            "rgba(2, 6, 23, 0.58)",
+          ]}
           style={StyleSheet.absoluteFillObject}
-          locations={[0, 0.45, 1]}
+          locations={[0, 0.62, 1]}
         />
       </ImageBackground>
-
-      <SafeAreaView style={styles.content}>
-        <Animated.View style={[styles.textContainer, animatedTextStyle]}>
-          <Text style={[styles.title, { color: tokens.colors.textPrimary }]}>{item.title}</Text>
-          <Text style={[styles.subtitle, { color: "rgba(248, 250, 252, 0.7)" }]}>{item.subtitle}</Text>
-        </Animated.View>
-      </SafeAreaView>
     </View>
   );
 };
@@ -51,32 +59,14 @@ const OnboardingSlide = ({ item, index, scrollX, width }) => {
 export const OnboardingScreen = () => {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+
   const scrollX = useSharedValue(0);
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef(null);
 
-  const SLIDES = [
-    {
-      id: "1",
-      title: "Own the morning.",
-      subtitle: "Wake to a calm mission that gets you out of bed.",
-      bg: require("../../assets/images/onboarding/bg1.jpg"),
-    },
-    {
-      id: "2",
-      title: "Prove you are up.",
-      subtitle: "AI checks your camera proof before the alarm stops.",
-      bg: require("../../assets/images/onboarding/bg2.jpg"),
-    },
-    {
-      id: "3",
-      title: "Keep the streak.",
-      subtitle: "Small wins stack into reliable mornings.",
-      bg: require("../../assets/images/onboarding/bg3.jpg"),
-    },
-  ];
-
-  const scrollHandler = useAnimatedScrollHandler((e) => { scrollX.value = e.contentOffset.x; });
+  const scrollHandler = useAnimatedScrollHandler((e) => {
+    scrollX.value = e.contentOffset.x;
+  });
 
   const finishOnboarding = async () => {
     haptics.success();
@@ -86,8 +76,12 @@ export const OnboardingScreen = () => {
 
   const handleNext = () => {
     haptics.selection();
+
     if (currentIndex < SLIDES.length - 1) {
-      flatListRef.current?.scrollToOffset({ offset: (currentIndex + 1) * width, animated: true });
+      flatListRef.current?.scrollToOffset({
+        offset: (currentIndex + 1) * width,
+        animated: true,
+      });
     } else {
       finishOnboarding();
     }
@@ -101,16 +95,16 @@ export const OnboardingScreen = () => {
       <Animated.FlatList
         ref={flatListRef}
         data={SLIDES}
-        renderItem={({ item, index }) => (
-          <OnboardingSlide item={item} index={index} scrollX={scrollX} width={width} />
-        )}
+        renderItem={({ item }) => <OnboardingSlide item={item} width={width} />}
         keyExtractor={(item) => item.id}
         horizontal
-        onScroll={scrollHandler}
         pagingEnabled
         showsHorizontalScrollIndicator={false}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
         onMomentumScrollEnd={(e) => {
           const idx = Math.round(e.nativeEvent.contentOffset.x / width);
+
           if (idx !== currentIndex) {
             haptics.selection();
             setCurrentIndex(idx);
@@ -118,40 +112,45 @@ export const OnboardingScreen = () => {
         }}
       />
 
-      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 40) }]}>
-        <View style={styles.pagination}>
-          {SLIDES.map((_, i) => (
-            <View
-              key={i}
-              style={[
-                styles.dot,
-                {
-                  backgroundColor: currentIndex === i ? tokens.colors.primary : "rgba(255,255,255,0.2)",
-                  width: currentIndex === i ? 14 : 3,
-                  opacity: currentIndex === i ? 1 : 0.45,
-                },
-              ]}
-            />
-          ))}
+      <View
+        style={[
+          styles.footer,
+          { paddingBottom: Math.max(insets.bottom, 40) },
+        ]}
+      >
+        <View style={styles.dotsContainer}>
+          {SLIDES.map((_, index) => {
+            const active = index === currentIndex;
+
+            return (
+              <View
+                key={index}
+                style={[
+                  styles.dot,
+                  active ? styles.activeDot : styles.inactiveDot,
+                ]}
+              />
+            );
+          })}
         </View>
 
         <Animated.View
-          entering={FadeInDown.delay(300).duration(tokens.animation.duration.normal)}
-          style={[styles.buttonContainer, isLast ? styles.buttonGlowSuccess : styles.buttonGlow]}
+          entering={FadeInDown.delay(300).duration(
+            tokens.animation.duration.normal
+          )}
+          style={[
+            styles.buttonContainer,
+            isLast ? styles.buttonGlowSuccess : styles.buttonGlow,
+          ]}
         >
-          <GlassCard onPress={handleNext} style={styles.buttonWrapper} containerStyle={styles.blurButton}>
-            <LinearGradient
-              colors={
-                isLast
-                  ? ["rgba(16, 185, 129, 0.85)", "rgba(5, 150, 105, 0.6)"]
-                  : ["rgba(255, 140, 56, 0.95)", "rgba(255, 106, 0, 0.8)"]
-              }
-              style={StyleSheet.absoluteFillObject}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            />
-            <Text style={styles.buttonText}>{buttonLabel}</Text>
-          </GlassCard>
+          <PrimaryButton
+            label={buttonLabel}
+            onPress={handleNext}
+            icon={isLast ? "checkmark" : "arrow-forward"}
+            variant={isLast ? "primary" : "primary"}
+            style={styles.button}
+            hapticOnPress="none"
+          />
         </Animated.View>
       </View>
     </View>
@@ -159,45 +158,59 @@ export const OnboardingScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#020617" },
-  slideContainer: { flex: 1 },
-  content: { flex: 1, justifyContent: "flex-end", paddingBottom: 160 },
-  textContainer: { paddingHorizontal: tokens.spacing.giant },
-  title: {
-    fontFamily: typography.family.hero,
-    fontSize: 46,
-    lineHeight: 50,
-    marginBottom: tokens.spacing.md,
-    letterSpacing: 0,
+  container: {
+    flex: 1,
+    backgroundColor: "#020617",
   },
-  subtitle: {
-    fontFamily: typography.family.regular,
-    fontSize: tokens.typography.size.body,
-    lineHeight: tokens.typography.size.body * 1.45,
-    opacity: 0.82,
-    maxWidth: "90%",
+
+  slideContainer: {
+    flex: 1,
   },
-  footer: { 
-    position: "absolute", 
-    bottom: 0, 
-    left: 0, 
-    right: 0, 
-    paddingHorizontal: tokens.spacing.giant, 
+
+  slideImage: {
+    backgroundColor: "#020617",
+  },
+
+  footer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: tokens.spacing.giant,
     alignItems: "center",
   },
-  pagination: {
+
+  dotsContainer: {
     flexDirection: "row",
-    marginBottom: tokens.spacing.giant,
     alignItems: "center",
-    gap: 5,
+    justifyContent: "center",
+    marginBottom: tokens.spacing.xl,
+    gap: 8,
   },
+
   dot: {
-    height: 3,
-    borderRadius: 2,
+    height: 8,
+    borderRadius: 999,
   },
+
+  activeDot: {
+    width: 24,
+    backgroundColor: tokens.colors.primary,
+  },
+
+  inactiveDot: {
+    width: 8,
+    backgroundColor: "rgba(255, 255, 255, 0.35)",
+  },
+
   buttonContainer: {
     width: "100%",
   },
+
+  button: {
+    borderRadius: tokens.radius.xl,
+  },
+
   buttonGlow: {
     shadowColor: tokens.colors.primary,
     shadowOffset: { width: 0, height: 6 },
@@ -205,6 +218,7 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 8,
   },
+
   buttonGlowSuccess: {
     shadowColor: tokens.colors.accent,
     shadowOffset: { width: 0, height: 6 },
@@ -212,34 +226,4 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 8,
   },
-  buttonWrapper: { 
-    width: "100%", 
-    height: 64, 
-    borderRadius: tokens.radius.xl, 
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
-  },
-  blurButton: { 
-    flex: 1, 
-    alignItems: "center", 
-    justifyContent: "center",
-  },
-  buttonText: { 
-    fontFamily: typography.family.card, 
-    fontSize: tokens.typography.size.card, 
-    color: "#FFF",
-    letterSpacing: 0,
-  },
-  skipWrap: {
-    marginTop: tokens.spacing.lg,
-    paddingVertical: tokens.spacing.sm,
-  },
-  skipText: {
-    fontFamily: typography.family.metadata,
-    fontSize: tokens.typography.size.body,
-    color: "rgba(248, 250, 252, 0.55)",
-  },
 });
-
-

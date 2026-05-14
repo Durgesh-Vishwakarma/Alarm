@@ -49,7 +49,7 @@ export const AlarmItem = ({ item, toggleAlarm, onLongPress, renderRightActions, 
           {/* Card Footer: Metadata */}
           <View style={s.footer}>
             <Text style={[s.days, { color: item.isActive ? tokens.colors.primary : theme.textMuted }]}>
-              {item.repeatDays?.length === 7 ? "DAILY" : item.repeatDays?.join(", ") || "ONCE"}
+              {item.repeatDays?.length === 7 ? "Daily" : item.repeatDays?.join(", ") || "Once"}
             </Text>
             <Text style={[s.label, { color: theme.textSecondary }]} numberOfLines={1}>
               {item.label || "Alarm"}
@@ -96,27 +96,23 @@ const s = StyleSheet.create({
     marginVertical: tokens.spacing.md,
   },
   time: { 
-    fontFamily: typography.family.hero, 
-    fontSize: 28, 
-    letterSpacing: 0,
+    fontFamily: typography.family.extraBold,
+    fontSize: 32,
+    letterSpacing: -1,
   },
   period: { 
-    fontFamily: typography.family.metadata, 
-    fontSize: 12, 
+    ...typography.styles.caption,
     opacity: 0.8,
   },
   footer: {
     gap: 2,
   },
   days: { 
-    fontFamily: typography.family.metadata, 
-    fontSize: 10, 
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
+    ...typography.styles.caption,
+    opacity: 0.58,
   },
   label: { 
-    fontFamily: typography.family.metadata, 
-    fontSize: 12,
+    ...typography.styles.caption,
     opacity: 0.6,
   },
 });

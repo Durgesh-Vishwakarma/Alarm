@@ -56,7 +56,6 @@ export default function StreaksTab() {
     <View style={[s.container, { backgroundColor: theme.bg }]}>
       <SafeAreaView style={s.safeArea} edges={["top"]}>
         <Animated.View entering={FadeIn.duration(tokens.animation.duration.normal)} style={s.header}>
-          <Text style={[s.metadata, { color: theme.textMuted }]}>YOUR JOURNEY</Text>
           <Text style={[s.pageTitle, { color: theme.textPrimary }]}>Performance</Text>
         </Animated.View>
 
@@ -79,7 +78,7 @@ export default function StreaksTab() {
                 <GlassCard style={[s.xpCard, { borderColor: theme.cardBorder }]} containerStyle={s.xpInner}>
                   <View style={s.xpHeader}>
                     <View>
-                      <Text style={[s.levelLabel, { color: theme.textSecondary }]}>CURRENT LEVEL</Text>
+                      <Text style={[s.levelLabel, { color: theme.textSecondary }]}>Current level</Text>
                       <Text style={[s.levelVal, { color: theme.textPrimary }]}>Level {level}</Text>
                     </View>
                     <View style={[s.levelBadge, { backgroundColor: `${theme.primary}28` }]}>
@@ -113,7 +112,7 @@ export default function StreaksTab() {
                       <View style={[s.ringActive, { borderColor: theme.primary, borderTopColor: "transparent" }]} />
                       <View style={s.ringContent}>
                         <Text style={[s.metricVal, { color: theme.textPrimary }]}>{stats.wakeStreak}</Text>
-                        <Text style={[s.metricLabel, { color: theme.textSecondary }]}>STREAK</Text>
+                        <Text style={[s.metricLabel, { color: theme.textSecondary }]}>Streak</Text>
                       </View>
                     </View>
                   </GlassCard>
@@ -131,7 +130,7 @@ export default function StreaksTab() {
                       />
                       <View style={s.ringContent}>
                         <Text style={[s.metricVal, { color: theme.textPrimary }]}>{completionRate}%</Text>
-                        <Text style={[s.metricLabel, { color: theme.textSecondary }]}>SUCCESS</Text>
+                        <Text style={[s.metricLabel, { color: theme.textSecondary }]}>Success</Text>
                       </View>
                     </View>
                   </GlassCard>
@@ -139,7 +138,7 @@ export default function StreaksTab() {
               </View>
 
               <Animated.View entering={FadeInDown.delay(400).duration(tokens.animation.duration.normal)} style={s.section}>
-                <Text style={[s.sectionLabel, { color: theme.textMuted }]}>WEEKLY CONSISTENCY</Text>
+                <Text style={[s.sectionLabel, { color: theme.textMuted }]}>Weekly consistency</Text>
                 <View style={[s.statsGrid, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}>
                   <View style={s.barContainer}>
                     {weekBars.map((val, i) => (
@@ -177,19 +176,10 @@ const s = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1 },
   loadingWrap: { flex: 1, justifyContent: "center", alignItems: "center", gap: 12 },
-  loadingText: { fontFamily: typography.family.metadata, fontSize: tokens.typography.size.body },
+  loadingText: { ...typography.styles.body },
   header: { paddingHorizontal: tokens.spacing.xl, paddingTop: tokens.spacing.xl, paddingBottom: tokens.spacing.md },
-  metadata: {
-    fontFamily: typography.family.metadata,
-    fontSize: tokens.typography.size.tiny,
-    letterSpacing: 2,
-    marginBottom: 4,
-    opacity: 0.6,
-  },
   pageTitle: {
-    fontFamily: typography.family.section,
-    fontSize: tokens.typography.size.section,
-    letterSpacing: -0.8,
+    ...typography.styles.titleLarge,
   },
   content: { padding: tokens.spacing.xl, gap: tokens.spacing.giant },
   xpCard: {
@@ -205,15 +195,12 @@ const s = StyleSheet.create({
     marginBottom: tokens.spacing.xl,
   },
   levelLabel: {
-    fontFamily: typography.family.metadata,
-    fontSize: tokens.typography.size.tiny,
-    letterSpacing: 1.5,
+    ...typography.styles.caption,
+    opacity: 0.58,
   },
   levelVal: {
-    fontFamily: typography.family.card,
-    fontSize: tokens.typography.size.card,
+    ...typography.styles.titleMedium,
     marginTop: 2,
-    letterSpacing: -0.5,
   },
   levelBadge: {
     width: 44,
@@ -239,8 +226,7 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   progressText: {
-    fontFamily: typography.family.metadata,
-    fontSize: tokens.typography.size.caption,
+    ...typography.styles.caption,
     opacity: 0.7,
   },
   metricsRow: {
@@ -282,21 +268,18 @@ const s = StyleSheet.create({
     alignItems: "center",
   },
   metricVal: {
-    fontFamily: typography.family.card,
+    fontFamily: typography.family.extraBold,
     fontSize: 28,
     letterSpacing: -1,
   },
   metricLabel: {
-    fontFamily: typography.family.metadata,
-    fontSize: 10,
-    letterSpacing: 1,
+    ...typography.styles.caption,
     marginTop: -2,
+    opacity: 0.58,
   },
   section: { gap: tokens.spacing.lg },
   sectionLabel: {
-    fontFamily: typography.family.metadata,
-    fontSize: tokens.typography.size.tiny,
-    letterSpacing: 1.5,
+    ...typography.styles.caption,
     paddingHorizontal: 4,
     opacity: 0.5,
   },
@@ -309,10 +292,10 @@ const s = StyleSheet.create({
   barCol: { alignItems: "center", gap: 8 },
   barBg: { width: 28, height: 80, borderRadius: 14, overflow: "hidden", justifyContent: "flex-end" },
   barFill: { width: "100%", borderRadius: 14 },
-  dayLabel: { fontFamily: typography.family.metadata, fontSize: tokens.typography.size.tiny, opacity: 0.6 },
+  dayLabel: { ...typography.styles.caption, opacity: 0.6 },
   emptyStateWrapper: { flex: 1, justifyContent: "center", marginTop: tokens.spacing.xxl },
   emptyInner: { padding: tokens.spacing.xxl, alignItems: "center", gap: tokens.spacing.md },
   emptyIconWrap: { width: 64, height: 64, borderRadius: 32, alignItems: "center", justifyContent: "center", marginBottom: tokens.spacing.md },
-  emptyTitle: { fontFamily: typography.family.section, fontSize: tokens.typography.size.card },
-  emptySubtitle: { fontFamily: typography.family.metadata, fontSize: tokens.typography.size.body, textAlign: "center", lineHeight: 22 },
+  emptyTitle: { ...typography.styles.titleMedium },
+  emptySubtitle: { ...typography.styles.body, textAlign: "center" },
 });

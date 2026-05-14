@@ -25,7 +25,7 @@ export const SystemSection = ({ form, set, theme }) => {
 
   return (
     <View style={s.container}>
-      <Text style={[s.sectionLabel, { color: theme.textSecondary }]}>ALARM SYSTEM</Text>
+      <Text style={[s.sectionLabel, { color: theme.textSecondary }]}>Alarm system</Text>
 
       <TouchableOpacity
         style={[s.settingRow, { backgroundColor: theme.surface }]}
@@ -68,7 +68,7 @@ export const SystemSection = ({ form, set, theme }) => {
           <View style={[s.iconBox, { backgroundColor: `${tokens.colors.accent}18` }]}>
             <Ionicons name="notifications" size={18} color={tokens.colors.accent} />
           </View>
-          <Text style={[s.settingLabel, { color: theme.textPrimary }]}>Snooze Limit</Text>
+          <Text style={[s.settingLabel, { color: theme.textPrimary }]}>Snooze limit</Text>
         </View>
         <Text style={[s.settingVal, { color: theme.textSecondary }]}>{form.snoozeLimit}x</Text>
       </TouchableOpacity>
@@ -89,11 +89,10 @@ export const SystemSection = ({ form, set, theme }) => {
 const s = StyleSheet.create({
   container: { marginTop: tokens.spacing.sm },
   sectionLabel: {
-    fontFamily: typography.family.metadata,
-    fontSize: 12,
-    letterSpacing: 1,
+    ...typography.styles.caption,
     marginBottom: tokens.spacing.lg,
     paddingHorizontal: tokens.spacing.xs,
+    opacity: 0.58,
   },
   settingRow: {
     flexDirection: "row",
@@ -114,8 +113,8 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  settingLabel: { fontFamily: typography.family.card, fontSize: 15 },
-  settingVal: { fontFamily: typography.family.metadata, fontSize: 14 },
+  settingLabel: { ...typography.styles.body },
+  settingVal: { ...typography.styles.caption },
   ringtoneList: {
     borderWidth: 1,
     borderRadius: tokens.radius.lg,
@@ -130,7 +129,6 @@ const s = StyleSheet.create({
     justifyContent: "space-between",
   },
   ringtoneText: {
-    fontFamily: typography.family.metadata,
-    fontSize: 14,
+    ...typography.styles.body,
   },
 });

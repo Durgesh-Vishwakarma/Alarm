@@ -39,7 +39,7 @@ export const Dashboard = ({ nextAlarm, wakeStats, completionRate, recommendation
     <Animated.View entering={FadeIn.duration(tokens.animation.duration.slow)} style={s.container}>
       <Animated.View entering={FadeInDown.delay(delay(0)).duration(tokens.animation.duration.normal)} style={s.header}>
         <View>
-          <Text style={[s.greeting, { color: theme.textSecondary }]}>GOOD MORNING</Text>
+          <Text style={[s.greeting, { color: theme.textSecondary }]}>Good morning</Text>
           <Text style={[s.name, { color: theme.textPrimary }]}>Alex</Text>
         </View>
         <View style={[s.avatar, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}>
@@ -65,7 +65,7 @@ export const Dashboard = ({ nextAlarm, wakeStats, completionRate, recommendation
                 <View style={s.nextHeader}>
                   <View style={s.heroLabelRow}>
                     <Ionicons name={nextAlarm?.isActive ? "sunny" : "moon"} size={15} color="rgba(255,255,255,0.82)" />
-                    <Text style={s.nextLabel}>NEXT ALARM</Text>
+                    <Text style={s.nextLabel}>Next alarm</Text>
                   </View>
                   <CustomSwitch value={nextAlarm?.isActive || false} onValueChange={onToggle} activeColor="rgba(255,255,255,0.4)" />
                 </View>
@@ -101,11 +101,11 @@ export const Dashboard = ({ nextAlarm, wakeStats, completionRate, recommendation
       <Animated.View entering={FadeInDown.delay(delay(2)).duration(tokens.animation.duration.normal)} style={s.statsRow}>
         <View style={[s.statPill, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
           <Text style={[s.statValue, { color: theme.textPrimary }]}>{wakeStats?.streak || 0}</Text>
-          <Text style={[s.statLabel, { color: theme.textMuted }]}>STREAK</Text>
+          <Text style={[s.statLabel, { color: theme.textMuted }]}>Streak</Text>
         </View>
         <View style={[s.statPill, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
           <Text style={[s.statValue, { color: theme.textPrimary }]}>{completionRate}%</Text>
-          <Text style={[s.statLabel, { color: theme.textMuted }]}>SUCCESS</Text>
+          <Text style={[s.statLabel, { color: theme.textMuted }]}>Success</Text>
         </View>
       </Animated.View>
 
@@ -137,15 +137,12 @@ const s = StyleSheet.create({
     paddingHorizontal: tokens.spacing.xs,
   },
   greeting: {
-    fontFamily: typography.family.regular,
-    fontSize: tokens.typography.size.tiny,
-    letterSpacing: 0.8,
+    ...typography.styles.caption,
     marginBottom: tokens.spacing.xs,
+    opacity: 0.58,
   },
   name: {
-    fontFamily: typography.family.hero,
-    fontSize: 38,
-    letterSpacing: 0,
+    ...typography.styles.titleLarge,
   },
   avatar: {
     width: 48,
@@ -182,9 +179,7 @@ const s = StyleSheet.create({
     gap: tokens.spacing.sm,
   },
   nextLabel: {
-    fontFamily: typography.family.regular,
-    fontSize: tokens.typography.size.tiny,
-    letterSpacing: 0.8,
+    ...typography.styles.caption,
     color: "rgba(255,255,255,0.72)",
   },
   timeRow: {
@@ -194,15 +189,11 @@ const s = StyleSheet.create({
     marginVertical: tokens.spacing.md,
   },
   time: {
-    fontFamily: typography.family.hero,
-    fontSize: 62,
+    ...typography.styles.displayMedium,
     color: "#FFF",
-    letterSpacing: 0,
-    lineHeight: 70,
   },
   period: {
-    fontFamily: typography.family.card,
-    fontSize: tokens.typography.size.card,
+    ...typography.styles.titleMedium,
     color: "rgba(255,255,255,0.82)",
     marginBottom: tokens.spacing.lg,
   },
@@ -233,13 +224,11 @@ const s = StyleSheet.create({
   },
   task: {
     flex: 1,
-    fontFamily: typography.family.regular,
-    fontSize: tokens.typography.size.body,
+    ...typography.styles.body,
     color: "#FFF",
   },
   metaText: {
-    fontFamily: typography.family.regular,
-    fontSize: tokens.typography.size.caption,
+    ...typography.styles.caption,
     color: "rgba(255,255,255,0.68)",
   },
   emptyHero: {
@@ -256,16 +245,13 @@ const s = StyleSheet.create({
     marginBottom: tokens.spacing.lg,
   },
   emptyTitle: {
-    fontFamily: typography.family.card,
-    fontSize: tokens.typography.size.card,
+    ...typography.styles.titleMedium,
     color: "#FFF",
     marginBottom: tokens.spacing.xs,
   },
   emptySubtitle: {
-    fontFamily: typography.family.regular,
-    fontSize: tokens.typography.size.body,
+    ...typography.styles.body,
     color: "rgba(255,255,255,0.64)",
-    lineHeight: 21,
   },
   statsRow: {
     flexDirection: "row",
@@ -281,15 +267,12 @@ const s = StyleSheet.create({
     ...tokens.shadows.sm,
   },
   statValue: {
-    fontFamily: typography.family.card,
-    fontSize: 22,
-    letterSpacing: 0,
+    ...typography.styles.titleMedium,
   },
   statLabel: {
-    fontFamily: typography.family.regular,
-    fontSize: tokens.typography.size.tiny,
-    letterSpacing: 0.8,
+    ...typography.styles.caption,
     marginTop: tokens.spacing.xs,
+    opacity: 0.58,
   },
   missionCard: {
     flexDirection: "row",
@@ -310,20 +293,15 @@ const s = StyleSheet.create({
   },
   missionText: { flex: 1 },
   missionTitle: {
-    fontFamily: typography.family.card,
-    fontSize: tokens.typography.size.body,
+    ...typography.styles.body,
     marginBottom: tokens.spacing.xs,
   },
   missionCopy: {
-    fontFamily: typography.family.regular,
-    fontSize: tokens.typography.size.caption,
-    lineHeight: 18,
+    ...typography.styles.caption,
   },
   sectionTitle: {
-    fontFamily: typography.family.hero,
-    fontSize: tokens.typography.size.section,
+    ...typography.styles.titleLarge,
     marginBottom: tokens.spacing.lg,
     paddingHorizontal: tokens.spacing.xs,
-    letterSpacing: 0,
   },
 });

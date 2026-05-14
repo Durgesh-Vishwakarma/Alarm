@@ -31,7 +31,6 @@ export default function SettingsScreen() {
     <View style={[s.container, { backgroundColor: theme.bg }]}>
       <SafeAreaView style={s.safeArea} edges={["top"]}>
         <Animated.View entering={FadeIn.duration(tokens.animation.duration.normal)} style={s.header}>
-          <Text style={[s.metadata, { color: theme.textMuted }]}>PREFERENCES & ACCOUNT</Text>
           <Text style={[s.pageTitle, { color: theme.textPrimary }]}>Settings</Text>
         </Animated.View>
 
@@ -50,7 +49,7 @@ export default function SettingsScreen() {
           </Animated.View>
 
           <Animated.View entering={FadeInDown.delay(200).duration(tokens.animation.duration.normal)} style={s.group}>
-            <Text style={[s.groupLabel, { color: theme.textMuted }]}>EXPERIENCE</Text>
+            <Text style={[s.groupLabel, { color: theme.textMuted }]}>Experience</Text>
             <View style={[s.groupCard, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}>
               <SettingRow
                 label="AI verification"
@@ -130,7 +129,7 @@ export default function SettingsScreen() {
           </Animated.View>
 
           <Animated.View entering={FadeInDown.delay(300).duration(tokens.animation.duration.normal)} style={s.group}>
-            <Text style={[s.groupLabel, { color: theme.textMuted }]}>SYSTEM & DISPLAY</Text>
+            <Text style={[s.groupLabel, { color: theme.textMuted }]}>System</Text>
             <View style={[s.groupCard, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}>
               <TouchableOpacity style={s.row} onPress={handleToggleDark}>
                 <View style={s.rowLeft}>
@@ -195,17 +194,8 @@ const s = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1 },
   header: { paddingHorizontal: tokens.spacing.xl, paddingTop: tokens.spacing.xl, paddingBottom: tokens.spacing.md },
-  metadata: {
-    fontFamily: typography.family.metadata,
-    fontSize: tokens.typography.size.tiny,
-    letterSpacing: 2,
-    marginBottom: 4,
-    opacity: 0.6,
-  },
   pageTitle: {
-    fontFamily: typography.family.section,
-    fontSize: tokens.typography.size.section,
-    letterSpacing: -0.8,
+    ...typography.styles.titleLarge,
   },
   content: { padding: tokens.spacing.xl, gap: tokens.spacing.giant },
   profileHero: {
@@ -218,13 +208,11 @@ const s = StyleSheet.create({
   },
   userInfo: { flex: 1, marginLeft: tokens.spacing.lg },
   avatar: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
-  userName: { fontFamily: typography.family.card, fontSize: tokens.typography.size.card, letterSpacing: -0.5 },
-  userMeta: { fontFamily: typography.family.metadata, fontSize: tokens.typography.size.caption, marginTop: 1, opacity: 0.7 },
+  userName: { ...typography.styles.titleMedium },
+  userMeta: { ...typography.styles.caption, marginTop: 1, opacity: 0.7 },
   group: { gap: tokens.spacing.lg },
   groupLabel: {
-    fontFamily: typography.family.metadata,
-    fontSize: tokens.typography.size.tiny,
-    letterSpacing: 1.5,
+    ...typography.styles.caption,
     paddingHorizontal: 4,
     opacity: 0.5,
   },
@@ -243,14 +231,13 @@ const s = StyleSheet.create({
   rowLeft: { flexDirection: "row", alignItems: "center", gap: tokens.spacing.md },
   rowRight: { flexDirection: "row", alignItems: "center", gap: tokens.spacing.sm },
   iconBox: { width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  rowLabel: { fontFamily: typography.family.metadata, fontSize: tokens.typography.size.body, opacity: 0.9 },
-  rowVal: { fontFamily: typography.family.metadata, fontSize: tokens.typography.size.caption, opacity: 0.8 },
+  rowLabel: { ...typography.styles.body, opacity: 0.9 },
+  rowVal: { ...typography.styles.caption, opacity: 0.8 },
   divider: { height: StyleSheet.hairlineWidth, marginHorizontal: tokens.spacing.lg },
   miniSwitch: { transform: [{ scale: 0.82 }] },
   proBtn: { marginBottom: tokens.spacing.sm },
   proHint: {
-    fontFamily: typography.family.metadata,
-    fontSize: tokens.typography.size.caption,
+    ...typography.styles.caption,
     textAlign: "center",
     opacity: 0.75,
     paddingHorizontal: tokens.spacing.lg,

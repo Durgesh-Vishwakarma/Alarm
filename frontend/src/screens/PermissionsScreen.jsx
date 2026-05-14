@@ -74,17 +74,17 @@ export const PermissionsScreen = () => {
       ? exactAlarmGranted
         ? batteryOptimizationGranted
           ? "All set"
-          : "Disable Battery Optimization"
-        : "Enable Exact Alarms"
-      : "Grant Notifications"
-    : "Grant Camera";
+          : "Disable battery optimization"
+        : "Enable exact alarms"
+      : "Grant notifications"
+    : "Grant camera";
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <SafeAreaView style={styles.safeArea} edges={["top"]}>
         <Animated.View entering={FadeInDown.duration(450)} style={styles.content}>
           <View style={styles.header}>
-            <Text style={[styles.title, { color: theme.textPrimary }]}>Enable Permissions</Text>
+            <Text style={[styles.title, { color: theme.textPrimary }]}>Enable permissions</Text>
             <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
               SnapWake needs camera and notification access to verify challenges and ring alarms on time.
             </Text>
@@ -186,8 +186,8 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, padding: spacing.md },
   content: { flex: 1 },
   header: { marginTop: spacing.md, marginBottom: spacing.lg },
-  title: { fontFamily: typography.family.bold, fontSize: 28 },
-  subtitle: { fontFamily: typography.family.regular, fontSize: 14, marginTop: 8, lineHeight: 20 },
+  title: { ...typography.styles.titleLarge },
+  subtitle: { ...typography.styles.body, marginTop: 8 },
   heroPanel: {
     borderRadius: 24,
     padding: spacing.lg,
@@ -203,10 +203,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   heroTitle: {
-    fontFamily: typography.family.bold,
-    fontSize: 24,
+    ...typography.styles.titleLarge,
     color: "#FFFFFF",
-    lineHeight: 30,
   },
   card: {
     borderRadius: 20,
@@ -224,8 +222,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   copy: { flex: 1 },
-  label: { fontFamily: typography.family.bold, fontSize: 14 },
-  value: { fontFamily: typography.family.bold, fontSize: 12, marginTop: 4 },
+  label: { ...typography.styles.body },
+  value: { ...typography.styles.caption, marginTop: 4 },
   actions: { marginTop: spacing.xl, gap: 12 },
   primaryButton: {
     borderRadius: 16,
@@ -235,6 +233,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
   },
-  primaryText: { fontFamily: typography.family.bold, fontSize: 14, color: "#FFFFFF" },
+  primaryText: { ...typography.styles.body, color: "#FFFFFF" },
   disabled: { opacity: 0.5 },
 });

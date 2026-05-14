@@ -9,7 +9,6 @@ import { ActivityIndicator, BackHandler, StyleSheet, Text, TouchableOpacity, Vie
 import Animated, { 
   FadeInDown, 
   FadeInUp, 
-  FadeIn, 
   withRepeat, 
   withTiming, 
   withSequence, 
@@ -176,7 +175,7 @@ export const WakeUpScreen = () => {
       <Animated.View entering={FadeInUp} style={s.header}>
         <BlurView intensity={20} tint="dark" style={s.hudBadge}>
           <View style={s.scanDot} />
-          <Text style={s.badgeTxt}>AI ANALYZING</Text>
+          <Text style={s.badgeTxt}>AI analyzing</Text>
         </BlurView>
         <Text style={s.instruction}><Text style={{ color: tokens.colors.primary }}>{wakeSession.challengeTitle}</Text></Text>
       </Animated.View>
@@ -236,7 +235,7 @@ export const WakeUpScreen = () => {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#000" },
   permissionContainer: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#000", gap: tokens.spacing.md },
-  permissionText: { color: "#FFF", fontFamily: typography.family.regular, fontSize: tokens.typography.size.body },
+  permissionText: { color: "#FFF", ...typography.styles.body },
   overlayTop: { position: "absolute", top: 0, left: 0, right: 0, height: 180 },
   overlayBottom: { position: "absolute", bottom: 0, left: 0, right: 0, height: 280 },
   header: { position: "absolute", top: 64, left: 24, right: 24, alignItems: "center" },
@@ -256,17 +255,12 @@ const s = StyleSheet.create({
   scanDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: tokens.colors.primary },
   badgeTxt: { 
     color: "rgba(255,255,255,0.8)", 
-    fontFamily: typography.family.metadata, 
-    fontSize: tokens.typography.size.tiny, 
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
+    ...typography.styles.caption,
   },
   instruction: { 
-    fontFamily: typography.family.section, 
-    fontSize: tokens.typography.size.section, 
+    ...typography.styles.titleLarge,
     color: "#FFF", 
     textAlign: "center", 
-    letterSpacing: 0,
   },
   focusArea: { 
     position: "absolute", 
@@ -301,8 +295,7 @@ const s = StyleSheet.create({
   },
   tip: { 
     color: "#FFF", 
-    fontFamily: typography.family.metadata, 
-    fontSize: tokens.typography.size.body, 
+    ...typography.styles.body,
     opacity: 0.9,
   },
   shutterBtn: { alignItems: "center", justifyContent: "center" },

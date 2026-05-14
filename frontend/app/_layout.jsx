@@ -1,11 +1,11 @@
 import {
-    PlusJakartaSans_400Regular,
-    PlusJakartaSans_500Medium,
-    PlusJakartaSans_600SemiBold,
-    PlusJakartaSans_700Bold,
-    PlusJakartaSans_800ExtraBold,
+    Outfit_400Regular,
+    Outfit_500Medium,
+    Outfit_600SemiBold,
+    Outfit_700Bold,
+    Outfit_800ExtraBold,
     useFonts
-} from '@expo-google-fonts/plus-jakarta-sans';
+} from '@expo-google-fonts/outfit';
 import { StatusBar } from 'expo-status-bar';
 import Constants from 'expo-constants';
 import { Stack } from 'expo-router';
@@ -36,11 +36,11 @@ const ThemedStatusBar = () => {
 export default function RootLayout() {
   // Load full brand typography suite
   const [loaded, error] = useFonts({
-    'Plus-Regular': PlusJakartaSans_400Regular,
-    'Plus-Medium': PlusJakartaSans_500Medium,
-    'Plus-SemiBold': PlusJakartaSans_600SemiBold,
-    'Plus-Bold': PlusJakartaSans_700Bold,
-    'Plus-ExtraBold': PlusJakartaSans_800ExtraBold,
+    'Outfit-Regular': Outfit_400Regular,
+    'Outfit-Medium': Outfit_500Medium,
+    'Outfit-SemiBold': Outfit_600SemiBold,
+    'Outfit-Bold': Outfit_700Bold,
+    'Outfit-ExtraBold': Outfit_800ExtraBold,
   });
 
   useEffect(() => {

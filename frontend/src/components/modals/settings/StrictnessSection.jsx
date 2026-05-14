@@ -3,15 +3,15 @@ import { Ionicons } from "@expo/vector-icons";
 import { typography, tokens } from "../../../theme";
 
 const LEVELS = [
-  { id: "gentle", label: "GENTLE", color: "#FFB547", desc: "Allows 3 snoozes." },
-  { id: "balanced", label: "BALANCED", color: "#FF7A18", desc: "Allows 1 snooze." },
-  { id: "strict", label: "STRICT", color: "#E85D00", desc: "No snooze allowed." },
+  { id: "gentle", label: "Gentle", color: "#FFB547", desc: "Allows 3 snoozes." },
+  { id: "balanced", label: "Balanced", color: "#FF7A18", desc: "Allows 1 snooze." },
+  { id: "strict", label: "Strict", color: "#E85D00", desc: "No snooze allowed." },
 ];
 
 export const StrictnessSection = ({ form, set, theme }) => (
   <View style={s.container}>
     <View style={s.headerRow}>
-      <Text style={[s.label, { color: theme.textSecondary }]}>WAKE INTENSITY</Text>
+      <Text style={[s.label, { color: theme.textSecondary }]}>Wake intensity</Text>
       <Text style={[s.levelName, { color: theme.primary }]}>
         {LEVELS.find(l => l.id === form.strictness)?.label}
       </Text>
@@ -61,15 +61,11 @@ const s = StyleSheet.create({
     paddingHorizontal: 4,
   },
   label: { 
-    fontFamily: typography.family.metadata, 
-    fontSize: tokens.typography.size.tiny, 
-    letterSpacing: 1.5, 
+    ...typography.styles.caption,
+    opacity: 0.58,
   },
   levelName: {
-    fontFamily: typography.family.metadata,
-    fontSize: tokens.typography.size.tiny,
-    letterSpacing: 1,
-    fontWeight: "700",
+    ...typography.styles.caption,
   },
   gaugeContainer: { 
     flexDirection: "row", 
@@ -93,8 +89,7 @@ const s = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.03)",
   },
   descText: {
-    fontFamily: typography.family.metadata,
-    fontSize: tokens.typography.size.caption,
+    ...typography.styles.caption,
     opacity: 0.8,
   },
 });
