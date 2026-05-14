@@ -2,7 +2,16 @@ import { useAtom, useAtomValue } from "jotai";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
-import { Modal, StyleSheet, Text, TouchableOpacity, View, ScrollView, Platform } from "react-native";
+import {
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+
 import {
   alarmDraftAtom,
   alarmEditingIdAtom,
@@ -27,8 +36,15 @@ export default function AlarmSettingsModal() {
   const editingId = useAtomValue(alarmEditingIdAtom);
   const [alarms, setAlarms] = useAtom(alarmsAtom);
 
-  const update = (key, val) => setDraft((p) => ({ ...p, [key]: val }));
-  const updateMultiple = (values) => setDraft((p) => ({ ...p, ...values }));
+  const isEdit = Boolean(editingId);
+
+  const update = (key, val) => {
+    setDraft((prev) => ({ ...prev, [key]: val }));
+  };
+
+  const updateMultiple = (values) => {
+    setDraft((prev) => ({ ...prev, ...values }));
+  };
 
   const close = async () => {
     await stopAlarmSound();
@@ -41,33 +57,124 @@ export default function AlarmSettingsModal() {
     setVisible(false);
   };
 
-  const isEdit = Boolean(editingId);
-
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={close}>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent
+      onRequestClose={close}
+    >
       <View style={s.overlay}>
         {Platform.OS === "ios" ? (
-          <BlurView intensity={28} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFillObject} />
+          <BlurView
+            intensity={isDark ? 34 : 46}
+            tint={isDark ? "dark" : "light"}
+            style={StyleSheet.absoluteFillObject}
+          />
         ) : (
           <LinearGradient
-            colors={isDark ? ["rgba(2,6,23,0.86)", "rgba(2,6,23,0.96)"] : ["rgba(15,23,42,0.18)", "rgba(15,23,42,0.34)"]}
+            colors={
+              isDark
+                ? ["rgba(2,6,23,0.82)", "rgba(2,6,23,0.96)"]
+                : ["rgba(15,23,42,0.18)", "rgba(15,23,42,0.38)"]
+            }
             style={StyleSheet.absoluteFillObject}
           />
         )}
+
         <View style={[s.sheet, { backgroundColor: theme.bg }]}>
+          <View style={s.handleWrap}>
+            <View
+              style={[
+                s.handle,
+                {
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.18)"
+                    : "rgba(15,23,42,0.18)",
+                },
+              ]}
+            />
+          </View>
+
           <View style={s.topBar}>
-            <TouchableOpacity onPress={close} style={[s.iconBtn, { backgroundColor: theme.surface }]} hitSlop={12}>
-              <Ionicons name="chevron-back" size={22} color={theme.textPrimary} />
+            <TouchableOpacity
+              onPress={close}
+              hitSlop={12}
+              style={[
+                s.iconBtn,
+                {
+                  backgroundColor: theme.card,
+                  borderColor: theme.cardBorder,
+                },
+              ]}
+            >
+              <Ionicons name="close" size={21} color={theme.textPrimary} />
             </TouchableOpacity>
-            <Text style={[s.barTitle, { color: theme.textPrimary }]}>{isEdit ? "Edit alarm" : "Add alarm"}</Text>
-            <TouchableOpacity onPress={save} style={[s.iconBtn, { backgroundColor: `${theme.primary}22` }]} hitSlop={12}>
+
+            <View style={s.titleBlock}>
+              <Text style={[s.kicker, { color: theme.primary }]}>
+                WAKE MISSION
+              </Text>
+              <Text style={[s.barTitle, { color: theme.textPrimary }]}>
+                {isEdit ? "Edit Alarm" : "New Alarm"}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              onPress={save}
+              hitSlop={12}
+              style={[
+                s.iconBtn,
+                {
+                  backgroundColor: "rgba(255,122,24,0.14)",
+                  borderColor: "rgba(255,122,24,0.22)",
+                },
+              ]}
+            >
               <Ionicons name="checkmark" size={22} color={theme.primary} />
             </TouchableOpacity>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
-            <View style={s.wheelBlock}>
-              <TimeSection form={draft} setMultiple={updateMultiple} />
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={s.scroll}
+          >
+            <LinearGradient
+              colors={["#FF8A1C", "#FF5E1A", "#111827"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={s.timeHero}
+            >
+              <View style={s.heroBlobOne} />
+              <View style={s.heroBlobTwo} />
+
+              <View style={s.heroTop}>
+                <View>
+                  <Text style={s.heroTiny}>
+                    {isEdit ? "ADJUST TIME" : "CHOOSE TIME"}
+                  </Text>
+                  <Text style={s.heroTitle}>
+                    {isEdit ? "Fine tune your wake-up" : "Build your mission"}
+                  </Text>
+                </View>
+
+                <View style={s.heroIcon}>
+                  <Ionicons name="alarm" size={23} color="#FFF" />
+                </View>
+              </View>
+
+              <View style={s.wheelBlock}>
+                <TimeSection form={draft} setMultiple={updateMultiple} />
+              </View>
+            </LinearGradient>
+
+            <View style={s.sectionHeader}>
+              <Text style={[s.sectionTitle, { color: theme.textPrimary }]}>
+                Mission Setup
+              </Text>
+              <Text style={[s.sectionSub, { color: theme.textSecondary }]}>
+                Repeat, challenge, strictness, and system controls.
+              </Text>
             </View>
 
             <View
@@ -76,24 +183,43 @@ export default function AlarmSettingsModal() {
                 {
                   backgroundColor: theme.card,
                   borderColor: theme.cardBorder,
-                  ...tokens.shadows.sm,
                 },
               ]}
             >
               <ScheduleSection form={draft} set={update} theme={theme} />
+
               <View style={[s.innerRule, { backgroundColor: theme.divider }]} />
+
               <ChallengeSection form={draft} set={update} theme={theme} />
+
               <View style={[s.innerRule, { backgroundColor: theme.divider }]} />
+
               <StrictnessSection form={draft} set={update} theme={theme} />
+
               <View style={[s.innerRule, { backgroundColor: theme.divider }]} />
+
               <SystemSection form={draft} set={update} theme={theme} />
             </View>
 
             <View style={s.bottomSpacer} />
           </ScrollView>
 
-          <View style={[s.footer, { backgroundColor: theme.bg, borderTopColor: theme.divider }]}>
-            <PrimaryButton label="Save alarm" icon="chevron-forward" iconPosition="right" onPress={save} hapticOnPress="impact" />
+          <View
+            style={[
+              s.footer,
+              {
+                backgroundColor: theme.bg,
+                borderTopColor: theme.divider,
+              },
+            ]}
+          >
+            <PrimaryButton
+              label={isEdit ? "Save Changes" : "Save Alarm"}
+              icon="chevron-forward"
+              iconPosition="right"
+              onPress={save}
+              hapticOnPress="impact"
+            />
           </View>
         </View>
       </View>
@@ -102,61 +228,189 @@ export default function AlarmSettingsModal() {
 }
 
 const s = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: "flex-end" },
+  overlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+
   sheet: {
-    height: "92%",
-    borderTopLeftRadius: tokens.radius.xxl,
-    borderTopRightRadius: tokens.radius.xxl,
+    height: "94%",
+    borderTopLeftRadius: 34,
+    borderTopRightRadius: 34,
     overflow: "hidden",
   },
+
+  handleWrap: {
+    alignItems: "center",
+    paddingTop: 10,
+    paddingBottom: 2,
+  },
+
+  handle: {
+    width: 42,
+    height: 5,
+    borderRadius: 99,
+  },
+
   topBar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: tokens.spacing.lg,
-    paddingTop: tokens.spacing.lg,
-    paddingBottom: tokens.spacing.md,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 16,
   },
+
+  titleBlock: {
+    alignItems: "center",
+  },
+
+  kicker: {
+    ...typography.styles.caption,
+    fontWeight: "900",
+    letterSpacing: 1.2,
+    marginBottom: 3,
+  },
+
+  barTitle: {
+    fontFamily: typography.family.extraBold,
+    fontSize: 22,
+    lineHeight: 26,
+    letterSpacing: -0.7,
+  },
+
   iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: tokens.radius.lg,
+    width: 42,
+    height: 42,
+    borderRadius: 16,
+    borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
   },
-  barTitle: {
-    fontFamily: typography.family.section,
-    fontSize: tokens.typography.size.card,
-    letterSpacing: 0,
-  },
+
   scroll: {
-    paddingHorizontal: tokens.spacing.xl,
-    paddingTop: tokens.spacing.sm,
+    paddingHorizontal: 20,
+    paddingTop: 4,
   },
-  wheelBlock: {
-    marginBottom: tokens.spacing.xl,
+
+  timeHero: {
+    minHeight: 270,
+    borderRadius: 36,
+    paddingHorizontal: 22,
+    paddingTop: 22,
+    paddingBottom: 14,
+    overflow: "hidden",
+
+    shadowColor: "#FF7A18",
+    shadowOpacity: 0.28,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 14 },
+    elevation: 8,
   },
-  settingsCard: {
-    borderRadius: tokens.radius.xl,
+
+  heroBlobOne: {
+    position: "absolute",
+    width: 190,
+    height: 190,
+    borderRadius: 95,
+    backgroundColor: "rgba(255,255,255,0.13)",
+    right: -66,
+    top: -72,
+  },
+
+  heroBlobTwo: {
+    position: "absolute",
+    width: 135,
+    height: 135,
+    borderRadius: 67.5,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    left: -48,
+    bottom: -42,
+  },
+
+  heroTop: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+
+  heroTiny: {
+    ...typography.styles.caption,
+    color: "rgba(255,255,255,0.76)",
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
+
+  heroTitle: {
+    fontFamily: typography.family.extraBold,
+    fontSize: 25,
+    lineHeight: 30,
+    letterSpacing: -1,
+    color: "#FFF",
+    marginTop: 4,
+    maxWidth: 230,
+  },
+
+  heroIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(255,255,255,0.15)",
     borderWidth: 1,
-    paddingVertical: tokens.spacing.sm,
-    paddingHorizontal: tokens.spacing.sm,
+    borderColor: "rgba(255,255,255,0.22)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  wheelBlock: {
+    marginTop: 4,
+  },
+
+  sectionHeader: {
+    marginTop: 28,
+    marginBottom: 14,
+  },
+
+  sectionTitle: {
+    fontFamily: typography.family.extraBold,
+    fontSize: 24,
+    lineHeight: 29,
+    letterSpacing: -0.9,
+  },
+
+  sectionSub: {
+    ...typography.styles.caption,
+    marginTop: 5,
+    lineHeight: 18,
+  },
+
+  settingsCard: {
+    borderRadius: 30,
+    borderWidth: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
     overflow: "hidden",
   },
+
   innerRule: {
     height: StyleSheet.hairlineWidth,
-    marginVertical: tokens.spacing.sm,
-    marginHorizontal: tokens.spacing.sm,
+    marginVertical: 8,
+    marginHorizontal: 8,
   },
-  bottomSpacer: { height: 180 },
+
+  bottomSpacer: {
+    height: 180,
+  },
+
   footer: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: tokens.spacing.xl,
-    paddingTop: tokens.spacing.lg,
-    paddingBottom: tokens.spacing.xxl,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 34,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
 });

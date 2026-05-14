@@ -1,43 +1,74 @@
 import { useEffect } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
-import Animated, { 
-  useAnimatedStyle, 
-  withSpring, 
+import { Pressable, StyleSheet } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  withSpring,
   withTiming,
   interpolateColor,
-  useSharedValue
+  useSharedValue,
 } from "react-native-reanimated";
 import { tokens } from "../theme/tokens";
 import { haptics } from "../services/hapticService";
 
-export const CustomSwitch = ({ value, onValueChange, activeColor }) => {
+export const CustomSwitch = ({
+  value,
+  onValueChange,
+  activeColor = tokens.colors.primary,
+  inactiveColor = "rgba(148,163,184,0.28)",
+  thumbOnColor = "#FFFFFF",
+  thumbOffColor = "#FFFFFF",
+  disabled = false,
+}) => {
   const progress = useSharedValue(value ? 1 : 0);
+  const scale = useSharedValue(1);
 
   useEffect(() => {
-    progress.value = withTiming(value ? 1 : 0, { duration: 250 });
+    progress.value = withTiming(value ? 1 : 0, { duration: 220 });
   }, [value]);
 
-  const animatedDotStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: progress.value * 20 }],
-  }));
-
-  const animatedBgStyle = useAnimatedStyle(() => ({
+  const animatedTrackStyle = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(
       progress.value,
       [0, 1],
-      ["rgba(255,255,255,0.1)", activeColor || tokens.colors.primary]
+      [inactiveColor, activeColor]
+    ),
+    borderColor: interpolateColor(
+      progress.value,
+      [0, 1],
+      ["rgba(148,163,184,0.24)", activeColor]
+    ),
+  }));
+
+  const animatedThumbStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: progress.value * 20 }, { scale: scale.value }],
+    backgroundColor: interpolateColor(
+      progress.value,
+      [0, 1],
+      [thumbOffColor, thumbOnColor]
     ),
   }));
 
   const handlePress = () => {
+    if (disabled) return;
+
     haptics.selection();
-    onValueChange(!value);
+
+    scale.value = withSpring(0.86, tokens.animation.spring, () => {
+      scale.value = withSpring(1, tokens.animation.spring);
+    });
+
+    onValueChange?.(!value);
   };
 
   return (
-    <Pressable onPress={handlePress}>
-      <Animated.View style={[styles.track, animatedBgStyle]}>
-        <Animated.View style={[styles.dot, animatedDotStyle]} />
+    <Pressable
+      onPress={handlePress}
+      disabled={disabled}
+      hitSlop={12}
+      style={disabled && styles.disabled}
+    >
+      <Animated.View style={[styles.track, animatedTrackStyle]}>
+        <Animated.View style={[styles.thumb, animatedThumbStyle]} />
       </Animated.View>
     </Pressable>
   );
@@ -45,18 +76,27 @@ export const CustomSwitch = ({ value, onValueChange, activeColor }) => {
 
 const styles = StyleSheet.create({
   track: {
-    width: 44,
-    height: 24,
-    borderRadius: 12,
+    width: 48,
+    height: 28,
+    borderRadius: 14,
     justifyContent: "center",
-    paddingHorizontal: 2,
+    paddingHorizontal: 3,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
   },
-  dot: {
+
+  thumb: {
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: "#FFF",
+
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+
+  disabled: {
+    opacity: 0.45,
   },
 });

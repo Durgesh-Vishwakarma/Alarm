@@ -13,69 +13,110 @@ import { haptics } from "../services/hapticService";
 export const GlassCard = ({
   children,
   style,
-  intensity = 20,
+  intensity = 24,
   onPress,
   onLongPress,
   containerStyle,
   pressScale = tokens.animation.pressScale,
+  disabled = false,
+  borderColor,
+  backgroundColor,
   ...props
 }) => {
   const { isDark } = useTheme();
   const scale = useSharedValue(1);
+
+  const canPress = !!onPress || !!onLongPress;
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
   const handlePressIn = () => {
-    if (onPress || onLongPress) {
+    if (!disabled && canPress) {
       scale.value = withSpring(pressScale, tokens.animation.spring);
       haptics.impact("light");
     }
   };
 
   const handlePressOut = () => {
-    if (onPress || onLongPress) {
+    if (!disabled && canPress) {
       scale.value = withSpring(1, tokens.animation.spring);
     }
   };
 
   const glassStyle = {
-    backgroundColor: Platform.OS === "ios"
-      ? (isDark ? "rgba(15, 23, 42, 0.48)" : "rgba(255, 255, 255, 0.64)")
-      : (isDark ? "rgba(15, 23, 42, 0.9)" : "rgba(255, 255, 255, 0.96)"),
-    borderColor: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(15, 23, 42, 0.05)",
+    backgroundColor:
+      backgroundColor ||
+      (Platform.OS === "ios"
+        ? isDark
+          ? "rgba(15, 23, 42, 0.56)"
+          : "rgba(255, 255, 255, 0.68)"
+        : isDark
+        ? "rgba(15, 23, 42, 0.92)"
+        : "rgba(255, 255, 255, 0.96)"),
+
+    borderColor:
+      borderColor ||
+      (isDark ? "rgba(255,255,255,0.1)" : "rgba(15,23,42,0.06)"),
   };
 
   return (
     <Pressable
-      onPress={onPress}
-      onLongPress={onLongPress}
+      onPress={disabled ? undefined : onPress}
+      onLongPress={disabled ? undefined : onLongPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      style={[style, { opacity: props.disabled ? 0.5 : 1 }]}
+      disabled={disabled}
+      style={style}
       {...props}
     >
-      <Animated.View style={[styles.container, glassStyle, animatedStyle]}>
+      <Animated.View
+        style={[
+          styles.container,
+          glassStyle,
+          animatedStyle,
+          disabled && styles.disabled,
+        ]}
+      >
         {Platform.OS === "ios" ? (
-          <BlurView
-            intensity={intensity}
-            tint={isDark ? "dark" : "light"}
-            style={StyleSheet.absoluteFillObject}
-          />
-        ) : (
           <>
+            <BlurView
+              intensity={intensity}
+              tint={isDark ? "dark" : "light"}
+              style={StyleSheet.absoluteFillObject}
+            />
             <LinearGradient
-              colors={isDark ? tokens.gradients.glassDark : tokens.gradients.glassLight}
+              colors={
+                isDark
+                  ? ["rgba(255,255,255,0.1)", "rgba(255,255,255,0.025)"]
+                  : ["rgba(255,255,255,0.55)", "rgba(255,255,255,0.18)"]
+              }
               style={StyleSheet.absoluteFillObject}
               pointerEvents="none"
             />
-            <View style={[StyleSheet.absoluteFillObject, styles.androidEdge]} pointerEvents="none" />
+          </>
+        ) : (
+          <>
+            <LinearGradient
+              colors={
+                isDark
+                  ? tokens.gradients.glassDark
+                  : tokens.gradients.glassLight
+              }
+              style={StyleSheet.absoluteFillObject}
+              pointerEvents="none"
+            />
+            <View
+              style={[StyleSheet.absoluteFillObject, styles.androidEdge]}
+              pointerEvents="none"
+            />
           </>
         )}
-        <View style={[styles.content, containerStyle]}>
-          {children}
-        </View>
+
+        <View style={[styles.innerBorder]} pointerEvents="none" />
+
+        <View style={[styles.content, containerStyle]}>{children}</View>
       </Animated.View>
     </Pressable>
   );
@@ -89,11 +130,24 @@ const styles = StyleSheet.create({
     position: "relative",
     ...tokens.shadows.sm,
   },
+
+  disabled: {
+    opacity: 0.92,
+  },
+
+  innerBorder: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: tokens.radius.xl,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.035)",
+  },
+
   androidEdge: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(255,255,255,0.14)",
-    backgroundColor: "rgba(255,255,255,0.015)",
+    borderTopColor: "rgba(255,255,255,0.16)",
+    backgroundColor: "rgba(255,255,255,0.018)",
   },
+
   content: {
     zIndex: 1,
     width: "100%",
