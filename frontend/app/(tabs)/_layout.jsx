@@ -7,9 +7,11 @@ import { Platform, StyleSheet, View } from "react-native";
 import { tokens } from "../../src/theme";
 import { useTheme } from "../../src/theme/ThemeContext";
 
-const TAB_HEIGHT = 76;
+const TAB_HEIGHT = 68;
+const TAB_RADIUS = tokens.radius.xl;
+const ACTIVE_SIZE = 42;
 
-const TabIcon = ({ name, color, focused, theme }) => (
+const TabIcon = ({ name, focused, theme }) => (
   <View style={s.tabIconWrap}>
     <View
       style={[
@@ -25,7 +27,7 @@ const TabIcon = ({ name, color, focused, theme }) => (
     >
       <Ionicons
         name={focused ? name : `${name}-outline`}
-        size={focused ? 26 : 24}
+        size={focused ? 24 : 22}
         color={focused ? theme.primary : theme.textMuted}
       />
     </View>
@@ -40,7 +42,7 @@ export default function TabLayout() {
       ? "transparent"
       : isDark
         ? "rgba(15, 23, 42, 0.94)"
-        : "rgba(255, 255, 255, 0.92)";
+        : "rgba(255, 255, 255, 0.94)";
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.bg }}>
@@ -53,83 +55,50 @@ export default function TabLayout() {
           tabBarShowLabel: false,
           tabBarStyle: {
             position: "absolute",
-            bottom: 14,
+            bottom: 10,
             left: 18,
             right: 18,
             height: TAB_HEIGHT,
-            borderRadius: 28,
+            borderRadius: TAB_RADIUS,
             borderTopWidth: 0,
             backgroundColor: barBg,
             borderWidth: 1,
-            borderColor: isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(15, 23, 42, 0.06)",
-            paddingHorizontal: 8,
-            ...Platform.select({
-              ios: tokens.shadows.md,
-              android: { elevation: 12 },
-            }),
+            borderColor: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(15, 23, 42, 0.06)",
+            paddingHorizontal: tokens.spacing.sm,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: 0.08,
+            shadowRadius: 18,
+            elevation: 4,
           },
-          tabBarBackground: () =>
-            Platform.OS === "ios" ? (
-              <View style={[StyleSheet.absoluteFillObject, { borderRadius: 28, overflow: "hidden" }]}>
+          tabBarBackground: () => (
+            <View style={[StyleSheet.absoluteFillObject, { borderRadius: TAB_RADIUS, overflow: "hidden" }]}>
+              {Platform.OS === "ios" ? (
                 <BlurView intensity={isDark ? 42 : 72} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFillObject} />
-                <View
-                  style={[
-                    StyleSheet.absoluteFillObject,
-                    {
-                      borderRadius: 28,
-                      borderTopWidth: StyleSheet.hairlineWidth,
-                      borderTopColor: "rgba(255, 255, 255, 0.12)",
-                    },
-                  ]}
-                  pointerEvents="none"
-                />
-              </View>
-            ) : (
-              <View style={[StyleSheet.absoluteFillObject, { borderRadius: 28, overflow: "hidden" }]}>
+              ) : (
                 <LinearGradient
-                  colors={
-                    isDark
-                      ? ["rgba(30, 41, 59, 0.98)", "rgba(15, 23, 42, 0.99)"]
-                      : ["rgba(255, 255, 255, 0.98)", "rgba(248, 250, 252, 0.95)"]
-                  }
+                  colors={isDark ? tokens.gradients.glassDark : tokens.gradients.glassLight}
                   style={StyleSheet.absoluteFillObject}
                 />
-                <View
-                  style={[
-                    StyleSheet.absoluteFillObject,
-                    {
-                      borderRadius: 28,
-                      borderTopWidth: StyleSheet.hairlineWidth,
-                      borderTopColor: "rgba(255, 255, 255, 0.14)",
-                    },
-                  ]}
-                  pointerEvents="none"
-                />
-              </View>
-            ),
+              )}
+              <View
+                style={[
+                  StyleSheet.absoluteFillObject,
+                  {
+                    borderRadius: TAB_RADIUS,
+                    borderTopWidth: StyleSheet.hairlineWidth,
+                    borderTopColor: "rgba(255, 255, 255, 0.12)",
+                  },
+                ]}
+                pointerEvents="none"
+              />
+            </View>
+          ),
         }}
       >
-        <Tabs.Screen
-          name="home"
-          options={{
-            title: "Home",
-            tabBarIcon: (p) => <TabIcon name="home" theme={theme} {...p} />,
-          }}
-        />
-        <Tabs.Screen
-          name="streaks"
-          options={{
-            title: "Stats",
-            tabBarIcon: (p) => <TabIcon name="stats-chart" theme={theme} {...p} />,
-          }}
-        />
-        <Tabs.Screen
-          name="settings"
-          options={{
-            title: "Settings",
-            tabBarIcon: (p) => <TabIcon name="settings" theme={theme} {...p} />,
-          }}
-        />
+        <Tabs.Screen name="home" options={{ title: "Home", tabBarIcon: (p) => <TabIcon name="home" theme={theme} {...p} /> }} />
+        <Tabs.Screen name="streaks" options={{ title: "Stats", tabBarIcon: (p) => <TabIcon name="stats-chart" theme={theme} {...p} /> }} />
+        <Tabs.Screen name="settings" options={{ title: "Settings", tabBarIcon: (p) => <TabIcon name="settings" theme={theme} {...p} /> }} />
       </Tabs>
     </View>
   );
@@ -140,12 +109,11 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     height: "100%",
-    paddingTop: 10,
   },
   iconHighlight: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: ACTIVE_SIZE,
+    height: ACTIVE_SIZE,
+    borderRadius: ACTIVE_SIZE / 2,
     alignItems: "center",
     justifyContent: "center",
   },

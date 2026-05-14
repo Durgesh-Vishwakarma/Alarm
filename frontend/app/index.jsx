@@ -1,5 +1,4 @@
 import { Redirect } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { OnboardingScreen } from "../src/screens/OnboardingScreen";
@@ -44,21 +43,11 @@ export default function Index() {
   }
 
   if (showOnboarding) {
-    return (
-      <>
-        <StatusBar style={theme.statusBar} backgroundColor={theme.bg} translucent={false} />
-        <OnboardingScreen />
-      </>
-    );
+    return <OnboardingScreen />;
   }
 
   if (showPermissions) {
-    return (
-      <>
-        <StatusBar style={theme.statusBar} backgroundColor={theme.bg} translucent={false} />
-        <PermissionsScreen />
-      </>
-    );
+    return <PermissionsScreen />;
   }
 
   return <Redirect href="/(tabs)/home" />;

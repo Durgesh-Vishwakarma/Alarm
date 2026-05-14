@@ -13,7 +13,7 @@ export const scheduleNativeAlarm = async (alarm) => {
     alarm.repeatDays || [],
     alarm.time,
     alarm.period,
-    alarm.ringtone || "alarm_neon",
+    alarm.ringtone || "ringtone",
   );
   return true;
 };

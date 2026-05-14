@@ -1,6 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from "react-native";
-
-const { width } = Dimensions.get("window");
+import { View, Text, StyleSheet, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Swipeable } from "react-native-gesture-handler";
 import Animated, { Layout } from "react-native-reanimated";
@@ -9,6 +7,7 @@ import { CustomSwitch } from "../../components/CustomSwitch";
 import { tokens, typography } from "../../theme";
 import { getChallengeById } from "../../data/challengeCatalog";
 
+const { width } = Dimensions.get("window");
 export const AlarmItem = ({ item, toggleAlarm, onLongPress, renderRightActions, theme }) => {
   const challenge = item.challengeId === "custom" 
     ? { icon: "sparkles", title: "Custom" } 
@@ -83,7 +82,7 @@ const s = StyleSheet.create({
   iconBox: {
     width: 36,
     height: 36,
-    borderRadius: 12,
+    borderRadius: tokens.radius.md,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -99,7 +98,7 @@ const s = StyleSheet.create({
   time: { 
     fontFamily: typography.family.hero, 
     fontSize: 28, 
-    letterSpacing: -1,
+    letterSpacing: 0,
   },
   period: { 
     fontFamily: typography.family.metadata, 
@@ -121,3 +120,4 @@ const s = StyleSheet.create({
     opacity: 0.6,
   },
 });
+

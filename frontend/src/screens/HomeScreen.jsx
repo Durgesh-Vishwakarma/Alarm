@@ -157,13 +157,13 @@ const s = StyleSheet.create({
   },
   fabContainer: {
     position: "absolute",
-    bottom: 100,
+    bottom: 92,
     right: tokens.spacing.xl,
   },
   fab: { 
     width: 58, 
     height: 58, 
-    borderRadius: 29, 
+    borderRadius: tokens.radius.full, 
     alignItems: "center", 
     justifyContent: "center", 
     shadowColor: tokens.colors.primary,
@@ -173,5 +173,6 @@ const s = StyleSheet.create({
     elevation: 8,
   },
   swipeRow: { width: 80, justifyContent: "center" },
-  swipeBtn: { flex: 1, justifyContent: "center", alignItems: "center", borderRadius: 24, marginVertical: 4, marginRight: 12 },
+  swipeBtn: { flex: 1, justifyContent: "center", alignItems: "center", borderRadius: tokens.radius.lg, marginVertical: tokens.spacing.xs, marginRight: tokens.spacing.md },
 });
+

@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams } from "expo-router";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
@@ -16,8 +17,9 @@ import Animated, {
   useSharedValue,
   Easing
 } from "react-native-reanimated";
-import { activeAlarmIdAtom, wakeSessionAtom } from "../atoms/alarmAtoms";
+import { INITIAL_WAKE_SESSION, activeAlarmIdAtom, wakeSessionAtom } from "../atoms/alarmAtoms";
 import { verifyChallengeImage } from "../services/aiVerificationService";
+import { loadAlarms } from "../services/alarmStorage";
 import { dismissAlarm } from "../services/alarmEngine";
 import { recordWakeResult } from "../services/streakService";
 import { haptics } from "../services/hapticService";
@@ -27,6 +29,7 @@ import { VerificationResult } from "./WakeUpScreen/VerificationResult";
 
 export const WakeUpScreen = () => {
   const { theme } = useTheme();
+  const params = useLocalSearchParams();
   const cameraRef = useRef(null);
   const [wakeSession, setWakeSession] = useAtom(wakeSessionAtom);
   const setActiveAlarmId = useSetAtom(activeAlarmIdAtom);
@@ -40,6 +43,30 @@ export const WakeUpScreen = () => {
   const focusAnim = useSharedValue(1);
   const overlayOpacity = useSharedValue(0.4);
 
+  useEffect(() => {
+    const alarmId = params?.alarmId ? String(params.alarmId) : params?.id ? String(params.id) : null;
+    if (!alarmId || wakeSession.alarmId) return;
+
+    loadAlarms().then((alarms) => {
+      const alarm = alarms.find((item) => String(item.id) === alarmId);
+      if (!alarm) return;
+
+      setWakeSession({
+        ...INITIAL_WAKE_SESSION,
+        status: "ringing",
+        alarmId: alarm.id,
+        challengeId: alarm.challengeId,
+        challengeTitle: alarm.challengeTitle || alarm.task || "AI Challenge",
+        targets: alarm.targets || [],
+        strictness: alarm.antiCheatStrictness || "Strict",
+      });
+    });
+  }, [params?.alarmId, params?.id, setWakeSession, wakeSession.alarmId]);
+  useEffect(() => {
+    if (!permission || (!permission.granted && permission.canAskAgain)) {
+      requestPermission();
+    }
+  }, [permission, requestPermission]);
   useEffect(() => {
     // Block system back button during active alarm
     const backHandler = BackHandler.addEventListener("hardwareBackPress", () => true);
@@ -80,7 +107,7 @@ export const WakeUpScreen = () => {
 
   const scanLineStyle = useAnimatedStyle(() => ({
     top: `${scanLinePos.value * 100}%`,
-    opacity: isProcessing ? 1 : 0.6,
+    opacity: isProcessing ? 1 : 0.72,
   }));
 
   const breathingOverlayStyle = useAnimatedStyle(() => ({
@@ -125,7 +152,14 @@ export const WakeUpScreen = () => {
     }
   };
 
-  if (!permission?.granted) return <View style={s.container}><ActivityIndicator color={theme.primary} /></View>;
+  if (!permission?.granted) {
+    return (
+      <View style={s.permissionContainer}>
+        <ActivityIndicator color={theme.primary} />
+        <Text style={s.permissionText}>Loading camera...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={s.container}>
@@ -142,9 +176,9 @@ export const WakeUpScreen = () => {
       <Animated.View entering={FadeInUp} style={s.header}>
         <BlurView intensity={20} tint="dark" style={s.hudBadge}>
           <View style={s.scanDot} />
-          <Text style={s.badgeTxt}>Neural Engine Active</Text>
+          <Text style={s.badgeTxt}>AI ANALYZING</Text>
         </BlurView>
-        <Text style={s.instruction}>Snap: <Text style={{ color: tokens.colors.primary }}>{wakeSession.challengeTitle}</Text></Text>
+        <Text style={s.instruction}><Text style={{ color: tokens.colors.primary }}>{wakeSession.challengeTitle}</Text></Text>
       </Animated.View>
 
       {/* Focus Area */}
@@ -201,6 +235,8 @@ export const WakeUpScreen = () => {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#000" },
+  permissionContainer: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#000", gap: tokens.spacing.md },
+  permissionText: { color: "#FFF", fontFamily: typography.family.regular, fontSize: tokens.typography.size.body },
   overlayTop: { position: "absolute", top: 0, left: 0, right: 0, height: 180 },
   overlayBottom: { position: "absolute", bottom: 0, left: 0, right: 0, height: 280 },
   header: { position: "absolute", top: 64, left: 24, right: 24, alignItems: "center" },
@@ -222,7 +258,7 @@ const s = StyleSheet.create({
     color: "rgba(255,255,255,0.8)", 
     fontFamily: typography.family.metadata, 
     fontSize: tokens.typography.size.tiny, 
-    letterSpacing: 1.5,
+    letterSpacing: 0.8,
     textTransform: "uppercase",
   },
   instruction: { 
@@ -230,7 +266,7 @@ const s = StyleSheet.create({
     fontSize: tokens.typography.size.section, 
     color: "#FFF", 
     textAlign: "center", 
-    letterSpacing: -1,
+    letterSpacing: 0,
   },
   focusArea: { 
     position: "absolute", 
@@ -294,3 +330,4 @@ const s = StyleSheet.create({
     height: "100%",
   },
 });
+

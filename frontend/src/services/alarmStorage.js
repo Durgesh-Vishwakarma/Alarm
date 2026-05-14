@@ -8,8 +8,8 @@ import { RINGTONE_OPTIONS } from "../data/ringtones";
  */
 
 const STORAGE_FILE = `${FileSystem.documentDirectory}snapwake-v2-alarms.json`;
-const ONBOARDING_KEY = "snapwake-onboarding-complete";
-const PERMISSIONS_KEY = "snapwake-permissions-complete";
+const ONBOARDING_KEY = "snapwake-onboarding-complete-v3";
+const PERMISSIONS_KEY = "snapwake-permissions-complete-v3";
 const STORAGE_VERSION = 2;
 
 // Seed data used only during development
@@ -44,8 +44,8 @@ const STRICTNESS_TO_AI = {
 };
 
 const RINGTONE_LABEL_TO_KEY = {
-  "Morning Glow": "alarm_neon",
-  "Neon Alarm": "alarm_neon",
+  "Morning Glow": "ringtone",
+  "Neon Alarm": "ringtone",
   Cincin: "cincin",
   iPhone: "iphone",
   Ringtone: "ringtone",
@@ -79,10 +79,10 @@ export const normalizeAlarmPayload = (form) => {
     if (!targets.length) targets = [...(ch.targets || [])];
   }
 
-  const ringRaw = form.ringtone || "alarm_neon";
+  const ringRaw = form.ringtone || "ringtone";
   const ringKey = RINGTONE_OPTIONS.some((o) => o.value === ringRaw)
     ? ringRaw
-    : RINGTONE_LABEL_TO_KEY[ringRaw] || "alarm_neon";
+    : RINGTONE_LABEL_TO_KEY[ringRaw] || "ringtone";
 
   const antiCheatStrictness =
     STRICTNESS_TO_AI[form.strictness] || form.antiCheatStrictness || "Standard";

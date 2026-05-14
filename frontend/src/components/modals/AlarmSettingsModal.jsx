@@ -1,5 +1,7 @@
 import { useAtom, useAtomValue } from "jotai";
 import { Ionicons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 import { Modal, StyleSheet, Text, TouchableOpacity, View, ScrollView, Platform } from "react-native";
 import {
   alarmDraftAtom,
@@ -9,6 +11,7 @@ import {
 } from "../../atoms/alarmAtoms";
 import { PrimaryButton } from "../PrimaryButton";
 import { handleSaveAlarmAction } from "../../services/alarmActions";
+import { stopAlarmSound } from "../../services/soundService";
 import { useTheme } from "../../theme/ThemeContext";
 import { typography, tokens } from "../../theme";
 import { TimeSection } from "./settings/TimeSection";
@@ -27,9 +30,13 @@ export default function AlarmSettingsModal() {
   const update = (key, val) => setDraft((p) => ({ ...p, [key]: val }));
   const updateMultiple = (values) => setDraft((p) => ({ ...p, ...values }));
 
-  const close = () => setVisible(false);
+  const close = async () => {
+    await stopAlarmSound();
+    setVisible(false);
+  };
 
   const save = async () => {
+    await stopAlarmSound();
     await handleSaveAlarmAction(alarms, draft, setAlarms);
     setVisible(false);
   };
@@ -38,9 +45,16 @@ export default function AlarmSettingsModal() {
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={close}>
-      <View style={[s.overlay, { backgroundColor: isDark ? "rgba(0, 0, 0, 0.88)" : "rgba(26, 26, 26, 0.35)" }]}>
+      <View style={s.overlay}>
+        {Platform.OS === "ios" ? (
+          <BlurView intensity={28} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFillObject} />
+        ) : (
+          <LinearGradient
+            colors={isDark ? ["rgba(2,6,23,0.86)", "rgba(2,6,23,0.96)"] : ["rgba(15,23,42,0.18)", "rgba(15,23,42,0.34)"]}
+            style={StyleSheet.absoluteFillObject}
+          />
+        )}
         <View style={[s.sheet, { backgroundColor: theme.bg }]}>
-          {/* App-bar style header */}
           <View style={s.topBar}>
             <TouchableOpacity onPress={close} style={[s.iconBtn, { backgroundColor: theme.surface }]} hitSlop={12}>
               <Ionicons name="chevron-back" size={22} color={theme.textPrimary} />
@@ -62,10 +76,7 @@ export default function AlarmSettingsModal() {
                 {
                   backgroundColor: theme.card,
                   borderColor: theme.cardBorder,
-                  ...Platform.select({
-                    ios: tokens.shadows.sm,
-                    android: { elevation: 3 },
-                  }),
+                  ...tokens.shadows.sm,
                 },
               ]}
             >
@@ -78,7 +89,7 @@ export default function AlarmSettingsModal() {
               <SystemSection form={draft} set={update} theme={theme} />
             </View>
 
-            <View style={{ height: 180 }} />
+            <View style={s.bottomSpacer} />
           </ScrollView>
 
           <View style={[s.footer, { backgroundColor: theme.bg, borderTopColor: theme.divider }]}>
@@ -93,9 +104,9 @@ export default function AlarmSettingsModal() {
 const s = StyleSheet.create({
   overlay: { flex: 1, justifyContent: "flex-end" },
   sheet: {
-    height: "94%",
-    borderTopLeftRadius: tokens.radius.giant,
-    borderTopRightRadius: tokens.radius.giant,
+    height: "92%",
+    borderTopLeftRadius: tokens.radius.xxl,
+    borderTopRightRadius: tokens.radius.xxl,
     overflow: "hidden",
   },
   topBar: {
@@ -109,14 +120,14 @@ const s = StyleSheet.create({
   iconBtn: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: tokens.radius.lg,
     alignItems: "center",
     justifyContent: "center",
   },
   barTitle: {
     fontFamily: typography.family.section,
     fontSize: tokens.typography.size.card,
-    letterSpacing: -0.3,
+    letterSpacing: 0,
   },
   scroll: {
     paddingHorizontal: tokens.spacing.xl,
@@ -137,6 +148,7 @@ const s = StyleSheet.create({
     marginVertical: tokens.spacing.sm,
     marginHorizontal: tokens.spacing.sm,
   },
+  bottomSpacer: { height: 180 },
   footer: {
     position: "absolute",
     bottom: 0,

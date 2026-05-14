@@ -20,7 +20,7 @@ export const startAlarm = async (
       status: "ringing",
       alarmId: dueAlarm.id,
       challengeId: dueAlarm.challengeId,
-      challengeTitle: dueAlarm.task,
+      challengeTitle: dueAlarm.challengeTitle || dueAlarm.task,
       targets: dueAlarm.targets || [],
       strictness: dueAlarm.antiCheatStrictness || "Strict",
     });
@@ -61,3 +61,4 @@ export const dismissAlarm = async ({
   await stopAlarm({ setActiveAlarmId, setWakeSession });
   router.replace("/");
 };
+

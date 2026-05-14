@@ -16,10 +16,11 @@ export const TimeSection = ({ form, setMultiple }) => (
 
 const s = StyleSheet.create({
   container: {
-    minHeight: 200,
+    minHeight: 280,
     justifyContent: "center",
     alignItems: "center",
     marginVertical: 16,
     paddingVertical: 8,
   },
 });
+

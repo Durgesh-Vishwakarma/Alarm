@@ -6,6 +6,7 @@ import {
     PlusJakartaSans_800ExtraBold,
     useFonts
 } from '@expo-google-fonts/plus-jakarta-sans';
+import { StatusBar } from 'expo-status-bar';
 import Constants from 'expo-constants';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -26,6 +27,11 @@ try {
 } catch (e) {
   if (__DEV__) console.warn('[Layout] SplashScreen safety fallback', e);
 }
+
+const ThemedStatusBar = () => {
+  const { theme } = require('../src/theme/ThemeContext').useTheme();
+  return <StatusBar style={theme.statusBar} backgroundColor="transparent" translucent />;
+};
 
 export default function RootLayout() {
   // Load full brand typography suite
@@ -94,6 +100,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider>
+          <ThemedStatusBar />
           <AlarmRuntimeProvider>
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="index" />

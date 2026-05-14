@@ -2,7 +2,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import { router } from "expo-router";
 import { useRef, useState } from "react";
-import { StyleSheet, Text, useWindowDimensions, View, ImageBackground, Pressable } from "react-native";
+import { StyleSheet, Text, useWindowDimensions, View, ImageBackground } from "react-native";
 import Animated, {
   interpolate,
   useAnimatedScrollHandler,
@@ -10,8 +10,8 @@ import Animated, {
   useSharedValue,
   FadeInDown,
 } from "react-native-reanimated";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { setOnboardingComplete, setPermissionsComplete } from "../services/alarmStorage";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { setOnboardingComplete } from "../services/alarmStorage";
 import { tokens, typography } from "../theme";
 import { haptics } from "../services/hapticService";
 import { GlassCard } from "../components/GlassCard";
@@ -49,6 +49,7 @@ const OnboardingSlide = ({ item, index, scrollX, width }) => {
 };
 
 export const OnboardingScreen = () => {
+  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const scrollX = useSharedValue(0);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -57,20 +58,20 @@ export const OnboardingScreen = () => {
   const SLIDES = [
     {
       id: "1",
-      title: "Wake up\nwith purpose.",
-      subtitle: "AI-powered challenges that make mornings count.",
+      title: "Own the morning.",
+      subtitle: "Wake to a calm mission that gets you out of bed.",
       bg: require("../../assets/images/onboarding/bg1.jpg"),
     },
     {
       id: "2",
-      title: "AI verifies\nyour proof.",
-      subtitle: "Complete challenges — verified with your camera.",
+      title: "Prove you are up.",
+      subtitle: "AI checks your camera proof before the alarm stops.",
       bg: require("../../assets/images/onboarding/bg2.jpg"),
     },
     {
       id: "3",
-      title: "Built for\nconsistency.",
-      subtitle: "Strong habits. Better streaks. A better you.",
+      title: "Keep the streak.",
+      subtitle: "Small wins stack into reliable mornings.",
       bg: require("../../assets/images/onboarding/bg3.jpg"),
     },
   ];
@@ -81,13 +82,6 @@ export const OnboardingScreen = () => {
     haptics.success();
     await setOnboardingComplete();
     router.replace("/permissions");
-  };
-
-  const skipAll = async () => {
-    haptics.selection();
-    await setOnboardingComplete();
-    await setPermissionsComplete();
-    router.replace("/(tabs)/home");
   };
 
   const handleNext = () => {
@@ -104,7 +98,6 @@ export const OnboardingScreen = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
       <Animated.FlatList
         ref={flatListRef}
         data={SLIDES}
@@ -125,7 +118,7 @@ export const OnboardingScreen = () => {
         }}
       />
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 40) }]}>
         <View style={styles.pagination}>
           {SLIDES.map((_, i) => (
             <View
@@ -150,8 +143,8 @@ export const OnboardingScreen = () => {
             <LinearGradient
               colors={
                 isLast
-                  ? ["rgba(16, 185, 129, 0.45)", "rgba(5, 150, 105, 0.15)"]
-                  : ["rgba(255, 140, 56, 0.45)", "rgba(255, 106, 0, 0.12)"]
+                  ? ["rgba(16, 185, 129, 0.85)", "rgba(5, 150, 105, 0.6)"]
+                  : ["rgba(255, 140, 56, 0.95)", "rgba(255, 106, 0, 0.8)"]
               }
               style={StyleSheet.absoluteFillObject}
               start={{ x: 0, y: 0 }}
@@ -160,10 +153,6 @@ export const OnboardingScreen = () => {
             <Text style={styles.buttonText}>{buttonLabel}</Text>
           </GlassCard>
         </Animated.View>
-
-        <Pressable onPress={skipAll} style={styles.skipWrap} hitSlop={14}>
-          <Text style={styles.skipText}>Skip</Text>
-        </Pressable>
       </View>
     </View>
   );
@@ -179,7 +168,7 @@ const styles = StyleSheet.create({
     fontSize: 46,
     lineHeight: 50,
     marginBottom: tokens.spacing.md,
-    letterSpacing: -1.8,
+    letterSpacing: 0,
   },
   subtitle: {
     fontFamily: typography.family.regular,
@@ -194,12 +183,11 @@ const styles = StyleSheet.create({
     left: 0, 
     right: 0, 
     paddingHorizontal: tokens.spacing.giant, 
-    paddingBottom: tokens.spacing.massive,
     alignItems: "center",
   },
   pagination: {
     flexDirection: "row",
-    marginBottom: 36,
+    marginBottom: tokens.spacing.giant,
     alignItems: "center",
     gap: 5,
   },
@@ -227,7 +215,7 @@ const styles = StyleSheet.create({
   buttonWrapper: { 
     width: "100%", 
     height: 64, 
-    borderRadius: 32, 
+    borderRadius: tokens.radius.xl, 
     overflow: "hidden",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.2)",
@@ -241,7 +229,7 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.card, 
     fontSize: tokens.typography.size.card, 
     color: "#FFF",
-    letterSpacing: 0.5,
+    letterSpacing: 0,
   },
   skipWrap: {
     marginTop: tokens.spacing.lg,
@@ -253,3 +241,5 @@ const styles = StyleSheet.create({
     color: "rgba(248, 250, 252, 0.55)",
   },
 });
+
+

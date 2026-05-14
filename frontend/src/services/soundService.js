@@ -1,14 +1,10 @@
 import { createAudioPlayer, setAudioModeAsync } from "expo-audio";
-import { RINGTONE_SOURCES } from "../data/ringtones";
+import { DEFAULT_RINGTONE, RINGTONE_SOURCES } from "../data/ringtones";
 
 let player = null;
 let isStarting = false;
 let soundAvailable = true;
 
-/**
- * Initializes global audio settings once during app startup.
- * Ensures alarms can override hardware mute and play in background.
- */
 export const initializeAudio = async () => {
   try {
     await setAudioModeAsync({
@@ -22,13 +18,17 @@ export const initializeAudio = async () => {
   }
 };
 
-export const startAlarmSound = async (ringtone = "alarm_neon") => {
+export const startAlarmSound = async (ringtone = DEFAULT_RINGTONE, options = {}) => {
   try {
+    if (options.forceRestart) {
+      await stopAlarmSound();
+    }
+
     if (player || isStarting) return;
     if (!soundAvailable) return;
     if (!ringtone || ringtone === "Silent") return;
 
-    const source = RINGTONE_SOURCES[ringtone];
+    const source = RINGTONE_SOURCES[ringtone] || RINGTONE_SOURCES[DEFAULT_RINGTONE];
     if (!source) {
       soundAvailable = false;
       return;

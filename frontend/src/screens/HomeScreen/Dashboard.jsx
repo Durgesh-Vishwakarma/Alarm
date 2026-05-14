@@ -1,16 +1,18 @@
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import Animated, { 
-  FadeIn, 
-  FadeInDown, 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withSpring 
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
 } from "react-native-reanimated";
 import { tokens, typography } from "../../theme";
 import { haptics } from "../../services/hapticService";
 import { CustomSwitch } from "../../components/CustomSwitch";
+
+const delay = (index) => 100 + index * tokens.animation.stagger;
 
 export const Dashboard = ({ nextAlarm, wakeStats, completionRate, recommendations, theme, toggleAlarm }) => {
   const heroScale = useSharedValue(1);
@@ -25,74 +27,60 @@ export const Dashboard = ({ nextAlarm, wakeStats, completionRate, recommendation
   };
 
   const handleHeroIn = () => {
-    heroScale.value = withSpring(0.98, { damping: 15, stiffness: 300 });
+    heroScale.value = withSpring(tokens.animation.pressScale, tokens.animation.spring);
     haptics.impact("light");
   };
 
   const handleHeroOut = () => {
-    heroScale.value = withSpring(1, { damping: 15, stiffness: 300 });
+    heroScale.value = withSpring(1, tokens.animation.spring);
   };
 
   return (
     <Animated.View entering={FadeIn.duration(tokens.animation.duration.slow)} style={s.container}>
-      {/* Emotional Header Section */}
-      <Animated.View entering={FadeInDown.delay(100).duration(tokens.animation.duration.normal)} style={s.header}>
+      <Animated.View entering={FadeInDown.delay(delay(0)).duration(tokens.animation.duration.normal)} style={s.header}>
         <View>
-          <Text style={[s.greeting, { color: theme.textSecondary }]}>Good morning,</Text>
-          <Text style={[s.name, { color: theme.textPrimary }]}>Alex 👋</Text>
+          <Text style={[s.greeting, { color: theme.textSecondary }]}>GOOD MORNING</Text>
+          <Text style={[s.name, { color: theme.textPrimary }]}>Alex</Text>
         </View>
         <View style={[s.avatar, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}>
           <Ionicons name="person" size={20} color={theme.textMuted} />
         </View>
       </Animated.View>
 
-      {/* Premium Next Alarm Hero Card with Lighting (Glow) */}
-      <Animated.View 
-        entering={FadeInDown.delay(200).duration(tokens.animation.duration.normal)}
+      <Animated.View
+        entering={FadeInDown.delay(delay(1)).duration(tokens.animation.duration.normal)}
         style={[s.heroContainer, nextAlarm?.isActive && s.heroGlow, heroAnimatedStyle]}
       >
-        <Pressable 
-          onPressIn={handleHeroIn}
-          onPressOut={handleHeroOut}
-          onPress={onToggle}
-          style={{ flex: 1 }}
-        >
+        <Pressable onPressIn={handleHeroIn} onPressOut={handleHeroOut} onPress={onToggle} style={s.pressable}>
           <LinearGradient
-            colors={
-              nextAlarm?.isActive
-                ? [theme.primary, tokens.colors.primaryDark, "#4C32B8"]
-                : ["#1E293B", "#0F172A"]
-            }
+            colors={nextAlarm?.isActive ? tokens.gradients.heroDark : tokens.gradients.heroIdle}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={s.heroBg}
           />
+          <View style={s.heroEdge} />
           <View style={s.heroContent}>
             {nextAlarm ? (
               <>
                 <View style={s.nextHeader}>
                   <View style={s.heroLabelRow}>
-                    <Ionicons name="alarm" size={14} color="rgba(255,255,255,0.8)" />
+                    <Ionicons name={nextAlarm?.isActive ? "sunny" : "moon"} size={15} color="rgba(255,255,255,0.82)" />
                     <Text style={s.nextLabel}>NEXT ALARM</Text>
                   </View>
-                  <CustomSwitch
-                    value={nextAlarm?.isActive || false}
-                    onValueChange={onToggle}
-                    activeColor="rgba(255,255,255,0.4)"
-                  />
+                  <CustomSwitch value={nextAlarm?.isActive || false} onValueChange={onToggle} activeColor="rgba(255,255,255,0.4)" />
                 </View>
-                
+
                 <View style={s.timeRow}>
                   <Text style={s.time}>{nextAlarm.time}</Text>
                   <Text style={s.period}>{nextAlarm.period}</Text>
                 </View>
-                
+
                 <View style={s.heroFooter}>
                   <View style={s.taskRow}>
                     <View style={s.taskIconBox}>
                       <Ionicons name="sparkles" size={12} color="#FFF" />
                     </View>
-                    <Text style={s.task}>{nextAlarm?.task || "Tap + to start"}</Text>
+                    <Text style={s.task} numberOfLines={1}>{nextAlarm?.challengeTitle || nextAlarm?.task || "AI challenge"}</Text>
                   </View>
                   <Text style={s.metaText}>In {nextAlarm?.mins || 0} mins</Text>
                 </View>
@@ -100,82 +88,92 @@ export const Dashboard = ({ nextAlarm, wakeStats, completionRate, recommendation
             ) : (
               <View style={s.emptyHero}>
                 <View style={s.emptyIconWrap}>
-                  <Ionicons name="moon" size={32} color={theme.primary} />
+                  <Ionicons name="moon" size={30} color={theme.primary} />
                 </View>
-                <View style={s.emptyTextWrap}>
-                  <Text style={s.emptyTitle}>Ready for tomorrow?</Text>
-                  <Text style={s.emptySubtitle}>Create a wake mission to start your streak.</Text>
-                </View>
-                <View style={s.emptyCta}>
-                  <Text style={[s.emptyCtaText, { color: theme.primary }]}>Create Mission</Text>
-                  <Ionicons name="arrow-forward" size={16} color={theme.primary} />
-                </View>
+                <Text style={s.emptyTitle}>Ready for tomorrow?</Text>
+                <Text style={s.emptySubtitle}>Create a wake mission to start your streak.</Text>
               </View>
             )}
           </View>
         </Pressable>
       </Animated.View>
 
-      <Animated.Text 
-        entering={FadeInDown.delay(300).duration(tokens.animation.duration.normal)}
-        style={[s.sectionTitle, { color: theme.textPrimary }]}
-      >
-        Your Alarms
-      </Animated.Text>
+      <Animated.View entering={FadeInDown.delay(delay(2)).duration(tokens.animation.duration.normal)} style={s.statsRow}>
+        <View style={[s.statPill, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+          <Text style={[s.statValue, { color: theme.textPrimary }]}>{wakeStats?.streak || 0}</Text>
+          <Text style={[s.statLabel, { color: theme.textMuted }]}>STREAK</Text>
+        </View>
+        <View style={[s.statPill, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+          <Text style={[s.statValue, { color: theme.textPrimary }]}>{completionRate}%</Text>
+          <Text style={[s.statLabel, { color: theme.textMuted }]}>SUCCESS</Text>
+        </View>
+      </Animated.View>
+
+      <Animated.View entering={FadeInDown.delay(delay(3)).duration(tokens.animation.duration.normal)} style={[s.missionCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+        <View style={[s.missionIcon, { backgroundColor: `${theme.primary}22` }]}>
+          <Ionicons name="flag" size={18} color={theme.primary} />
+        </View>
+        <View style={s.missionText}>
+          <Text style={[s.missionTitle, { color: theme.textPrimary }]}>Today mission</Text>
+          <Text style={[s.missionCopy, { color: theme.textSecondary }]} numberOfLines={2}>{recommendations}</Text>
+        </View>
+      </Animated.View>
+
+      <Animated.Text entering={FadeInDown.delay(delay(4)).duration(tokens.animation.duration.normal)} style={[s.sectionTitle, { color: theme.textPrimary }]}>Your Alarms</Animated.Text>
     </Animated.View>
   );
 };
 
 const s = StyleSheet.create({
-  container: { 
+  container: {
     marginBottom: tokens.spacing.lg,
     paddingTop: tokens.spacing.sm,
   },
-  header: { 
-    flexDirection: "row", 
-    justifyContent: "space-between", 
-    alignItems: "flex-start", 
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: tokens.spacing.xl,
-    paddingHorizontal: 4,
+    paddingHorizontal: tokens.spacing.xs,
   },
-  greeting: { 
-    fontFamily: typography.family.metadata, 
-    fontSize: tokens.typography.size.metadata,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
+  greeting: {
+    fontFamily: typography.family.regular,
+    fontSize: tokens.typography.size.tiny,
+    letterSpacing: 0.8,
     marginBottom: tokens.spacing.xs,
   },
   name: {
-    fontFamily: typography.family.section,
-    fontSize: 40,
-    letterSpacing: -0.8,
+    fontFamily: typography.family.hero,
+    fontSize: 38,
+    letterSpacing: 0,
   },
-  avatar: { 
-    width: 48, 
-    height: 48, 
-    borderRadius: 24, 
-    alignItems: "center", 
-    justifyContent: "center", 
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
   },
   heroContainer: {
     borderRadius: tokens.radius.xl,
     overflow: "hidden",
-    marginBottom: tokens.spacing.giant,
-    elevation: 8,
+    marginBottom: tokens.spacing.lg,
+    ...tokens.shadows.md,
   },
-  heroGlow: {
-    ...tokens.shadows.glow,
-  },
-  heroBg: {
+  heroGlow: tokens.shadows.glow,
+  pressable: { flex: 1 },
+  heroBg: { ...StyleSheet.absoluteFillObject },
+  heroEdge: {
     ...StyleSheet.absoluteFillObject,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    borderRadius: tokens.radius.xl,
   },
-  heroContent: {
-    padding: tokens.spacing.xxl,
-  },
-  nextHeader: { 
-    flexDirection: "row", 
-    justifyContent: "space-between", 
+  heroContent: { padding: tokens.spacing.xxl },
+  nextHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
   },
   heroLabelRow: {
@@ -183,110 +181,149 @@ const s = StyleSheet.create({
     alignItems: "center",
     gap: tokens.spacing.sm,
   },
-  nextLabel: { 
-    fontFamily: typography.family.metadata, 
-    fontSize: tokens.typography.size.tiny, 
-    letterSpacing: 1,
-    color: "rgba(255,255,255,0.7)", 
+  nextLabel: {
+    fontFamily: typography.family.regular,
+    fontSize: tokens.typography.size.tiny,
+    letterSpacing: 0.8,
+    color: "rgba(255,255,255,0.72)",
   },
-  timeRow: { 
-    flexDirection: "row", 
-    alignItems: "flex-end", 
-    gap: 8, 
+  timeRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: tokens.spacing.sm,
     marginVertical: tokens.spacing.md,
   },
-  time: { 
-    fontFamily: typography.family.hero, 
-    fontSize: 64, // Keeping 64 for hero time as it's a specific "Huge" display beyond standard Hero size
+  time: {
+    fontFamily: typography.family.hero,
+    fontSize: 62,
     color: "#FFF",
-    letterSpacing: -2,
-    lineHeight: 72,
+    letterSpacing: 0,
+    lineHeight: 70,
   },
-  period: { 
-    fontFamily: typography.family.section, 
-    fontSize: 20, 
-    color: "rgba(255,255,255,0.8)",
-    marginBottom: tokens.spacing.lg,
-  },
-  emptyHero: {
-    marginVertical: tokens.spacing.sm,
-    alignItems: "flex-start",
-  },
-  emptyIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "rgba(139, 92, 246, 0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: tokens.spacing.lg,
-  },
-  emptyTextWrap: {
-    gap: tokens.spacing.xs,
-    marginBottom: tokens.spacing.xl,
-  },
-  emptyTitle: { 
-    fontFamily: typography.family.section, 
-    fontSize: tokens.typography.size.card, 
-    color: "#FFF", 
-  },
-  emptySubtitle: {
-    fontFamily: typography.family.metadata,
-    fontSize: tokens.typography.size.body,
-    color: "rgba(255,255,255,0.6)",
-    lineHeight: 20,
-  },
-  emptyCta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: tokens.spacing.sm,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    paddingHorizontal: tokens.spacing.lg,
-    paddingVertical: tokens.spacing.sm,
-    borderRadius: tokens.radius.full,
-  },
-  emptyCtaText: {
+  period: {
     fontFamily: typography.family.card,
-    fontSize: tokens.typography.size.body,
+    fontSize: tokens.typography.size.card,
+    color: "rgba(255,255,255,0.82)",
+    marginBottom: tokens.spacing.lg,
   },
   heroFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginTop: tokens.spacing.sm,
+    gap: tokens.spacing.md,
   },
-  taskRow: { 
-    flexDirection: "row", 
-    alignItems: "center", 
+  taskRow: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
     gap: tokens.spacing.sm,
     backgroundColor: "rgba(255,255,255,0.1)",
     paddingHorizontal: tokens.spacing.md,
-    paddingVertical: tokens.spacing.xs,
+    paddingVertical: tokens.spacing.sm,
     borderRadius: tokens.radius.full,
   },
   taskIconBox: {
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    backgroundColor: "rgba(255,255,255,0.18)",
     alignItems: "center",
     justifyContent: "center",
   },
-  task: { 
-    fontFamily: typography.family.metadata, 
-    fontSize: tokens.typography.size.body, 
+  task: {
+    flex: 1,
+    fontFamily: typography.family.regular,
+    fontSize: tokens.typography.size.body,
     color: "#FFF",
   },
   metaText: {
-    fontFamily: typography.family.metadata,
+    fontFamily: typography.family.regular,
     fontSize: tokens.typography.size.caption,
-    color: "rgba(255,255,255,0.6)",
+    color: "rgba(255,255,255,0.68)",
   },
-  sectionTitle: { 
-    fontFamily: typography.family.section, 
-    fontSize: tokens.typography.size.section, 
+  emptyHero: {
+    paddingVertical: tokens.spacing.sm,
+    alignItems: "flex-start",
+  },
+  emptyIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(255, 122, 24, 0.18)",
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: tokens.spacing.lg,
-    paddingHorizontal: 4,
-    letterSpacing: -0.5,
+  },
+  emptyTitle: {
+    fontFamily: typography.family.card,
+    fontSize: tokens.typography.size.card,
+    color: "#FFF",
+    marginBottom: tokens.spacing.xs,
+  },
+  emptySubtitle: {
+    fontFamily: typography.family.regular,
+    fontSize: tokens.typography.size.body,
+    color: "rgba(255,255,255,0.64)",
+    lineHeight: 21,
+  },
+  statsRow: {
+    flexDirection: "row",
+    gap: tokens.spacing.md,
+    marginBottom: tokens.spacing.lg,
+  },
+  statPill: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: tokens.radius.lg,
+    paddingVertical: tokens.spacing.md,
+    paddingHorizontal: tokens.spacing.lg,
+    ...tokens.shadows.sm,
+  },
+  statValue: {
+    fontFamily: typography.family.card,
+    fontSize: 22,
+    letterSpacing: 0,
+  },
+  statLabel: {
+    fontFamily: typography.family.regular,
+    fontSize: tokens.typography.size.tiny,
+    letterSpacing: 0.8,
+    marginTop: tokens.spacing.xs,
+  },
+  missionCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderRadius: tokens.radius.xl,
+    padding: tokens.spacing.lg,
+    marginBottom: tokens.spacing.xxl,
+    ...tokens.shadows.sm,
+  },
+  missionIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: tokens.spacing.md,
+  },
+  missionText: { flex: 1 },
+  missionTitle: {
+    fontFamily: typography.family.card,
+    fontSize: tokens.typography.size.body,
+    marginBottom: tokens.spacing.xs,
+  },
+  missionCopy: {
+    fontFamily: typography.family.regular,
+    fontSize: tokens.typography.size.caption,
+    lineHeight: 18,
+  },
+  sectionTitle: {
+    fontFamily: typography.family.hero,
+    fontSize: tokens.typography.size.section,
+    marginBottom: tokens.spacing.lg,
+    paddingHorizontal: tokens.spacing.xs,
+    letterSpacing: 0,
   },
 });

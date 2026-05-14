@@ -3,7 +3,7 @@ import { atom } from 'jotai';
 // Core alarm list
 export const alarmsAtom = atom([]);
 
-/** Alarm editor draft — survives re-renders; reset only when opening/closing flows set it */
+/** Alarm editor draft Ã¢â‚¬â€ survives re-renders; reset only when opening/closing flows set it */
 export const INITIAL_ALARM_DRAFT = {
   hour: "07",
   minute: "30",
@@ -12,7 +12,7 @@ export const INITIAL_ALARM_DRAFT = {
   repeatDays: ["Mon", "Tue", "Wed", "Thu", "Fri"],
   challengeId: "toothbrush",
   strictness: "balanced",
-  ringtone: "alarm_neon",
+  ringtone: "ringtone",
   vibrate: true,
   snoozeLimit: 1,
   isActive: true,
