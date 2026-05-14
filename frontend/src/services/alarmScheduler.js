@@ -20,7 +20,8 @@ export const scheduleNativeAlarm = async (alarm) => {
 
 export const cancelNativeAlarm = async (alarmId) => {
   if (Platform.OS !== "android" || !AlarmScheduler) return false;
-  await AlarmScheduler.cancelAlarm(alarmId);
+  if (alarmId == null || alarmId === "") return false;
+  await AlarmScheduler.cancelAlarm(String(alarmId));
   return true;
 };
 

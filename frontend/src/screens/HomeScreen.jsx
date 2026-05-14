@@ -1,17 +1,25 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FlatList, StyleSheet, TouchableOpacity, View } from "react-native";
 import { RectButton } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { alarmsAtom } from "../atoms/alarmAtoms";
-import Header from "../components/Header";
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
+import { haptics } from "../services/hapticService";
+import {
+  INITIAL_ALARM_DRAFT,
+  alarmDraftAtom,
+  alarmEditingIdAtom,
+  alarmModalVisibleAtom,
+  alarmsAtom,
+} from "../atoms/alarmAtoms";
 import AlarmSettingsModal from "../components/modals/AlarmSettingsModal";
 import { getNextAlarmDate } from "../services/alarmRuntime";
 import { loadAlarms } from "../services/alarmStorage";
 import { loadWakeStats } from "../services/streakService";
-import { handleToggleAlarm, handleSaveAlarmAction, handleDeleteAlarmAction } from "../services/alarmActions";
+import { handleToggleAlarm, handleDeleteAlarmAction } from "../services/alarmActions";
 import { useTheme } from "../theme/ThemeContext";
+import { tokens } from "../theme/tokens";
 
 import { Dashboard } from "./HomeScreen/Dashboard";
 import { AlarmItem } from "./HomeScreen/AlarmItem";
@@ -19,9 +27,11 @@ import { AlarmItem } from "./HomeScreen/AlarmItem";
 export const HomeScreen = () => {
   const { theme } = useTheme();
   const [alarms, setAlarms] = useAtom(alarmsAtom);
+  const setDraft = useSetAtom(alarmDraftAtom);
+  const setEditingId = useSetAtom(alarmEditingIdAtom);
+  const setModalVisible = useSetAtom(alarmModalVisibleAtom);
   const [wakeStats, setWakeStats] = useState(null);
-  const [isModalVisible, setModalVisible] = useState(false);
-  const [editingAlarm, setEditingAlarm] = useState(null);
+  const [tick, setTick] = useState(Date.now());
 
   const hydrate = useCallback(async () => {
     const [storedAlarms, storedStats] = await Promise.all([loadAlarms(), loadWakeStats()]);
@@ -29,14 +39,33 @@ export const HomeScreen = () => {
     setWakeStats(storedStats);
   }, [setAlarms]);
 
-  useEffect(() => { hydrate(); }, [hydrate]);
+  useEffect(() => { 
+    hydrate(); 
+    const interval = setInterval(() => setTick(Date.now()), 60000);
+    return () => clearInterval(interval);
+  }, [hydrate]);
+
+  const openNewAlarm = useCallback(() => {
+    setDraft({ ...INITIAL_ALARM_DRAFT });
+    setEditingId(null);
+    setModalVisible(true);
+  }, [setDraft, setEditingId, setModalVisible]);
+
+  const openEditAlarm = useCallback(
+    (a) => {
+      setDraft({ ...INITIAL_ALARM_DRAFT, ...a });
+      setEditingId(a.id);
+      setModalVisible(true);
+    },
+    [setDraft, setEditingId, setModalVisible],
+  );
 
   const activeAlarms = useMemo(() => alarms.filter(a => a.isActive), [alarms]);
   const nextAlarm = useMemo(() => {
     return activeAlarms
-      .map(a => ({ ...a, mins: Math.round((getNextAlarmDate(a).getTime() - Date.now()) / 60000) }))
+      .map(a => ({ ...a, mins: Math.round((getNextAlarmDate(a).getTime() - tick) / 60000) }))
       .sort((a, b) => a.mins - b.mins)[0];
-  }, [activeAlarms]);
+  }, [activeAlarms, tick]);
 
   const completionRate = wakeStats?.attempted ? Math.round((wakeStats.completed / wakeStats.attempted) * 100) : 0;
   const recommendations = useMemo(() => {
@@ -52,14 +81,29 @@ export const HomeScreen = () => {
     </View>
   );
 
+  const fabScale = useSharedValue(1);
+
+  const fabAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: fabScale.value }],
+  }));
+
+  const handleFabIn = () => {
+    fabScale.value = withSpring(0.9, { damping: 12, stiffness: 200 });
+    haptics.impact("light");
+  };
+
+  const handleFabOut = () => {
+    fabScale.value = withSpring(1, { damping: 12, stiffness: 200 });
+  };
+
   return (
     <View style={[s.container, { backgroundColor: theme.bg }]}>
       <SafeAreaView style={s.safeArea} edges={["top"]}>
-        <Header name="Durgesh" />
-        
         <FlatList
           data={alarms}
           keyExtractor={item => item.id}
+          numColumns={2}
+          columnWrapperStyle={s.columnWrapper}
           ListHeaderComponent={() => (
             <Dashboard 
               nextAlarm={nextAlarm} 
@@ -67,6 +111,7 @@ export const HomeScreen = () => {
               completionRate={completionRate} 
               recommendations={recommendations} 
               theme={theme} 
+              toggleAlarm={(id) => handleToggleAlarm(alarms, id, setAlarms)}
             />
           )}
           renderItem={({ item }) => (
@@ -74,24 +119,28 @@ export const HomeScreen = () => {
               item={item} 
               theme={theme} 
               toggleAlarm={(id) => handleToggleAlarm(alarms, id, setAlarms)} 
-              onLongPress={(a) => { setEditingAlarm(a); setModalVisible(true); }}
+              onLongPress={openEditAlarm}
               renderRightActions={renderRightActions}
             />
           )}
           contentContainerStyle={s.list}
+          showsVerticalScrollIndicator={false}
         />
 
-        <TouchableOpacity style={[s.fab, { backgroundColor: theme.primary }]} onPress={() => { setEditingAlarm(null); setModalVisible(true); }}>
-          <Ionicons name="add" size={30} color="#FFF" />
-        </TouchableOpacity>
+        <Animated.View style={[s.fabContainer, fabAnimatedStyle]}>
+          <TouchableOpacity 
+            activeOpacity={1}
+            onPressIn={handleFabIn}
+            onPressOut={handleFabOut}
+            style={[s.fab, { backgroundColor: theme.primary }]} 
+            onPress={openNewAlarm}
+          >
+            <Ionicons name="add" size={30} color="#FFF" />
+          </TouchableOpacity>
+        </Animated.View>
       </SafeAreaView>
 
-      <AlarmSettingsModal 
-        visible={isModalVisible} 
-        editingAlarm={editingAlarm} 
-        onClose={() => setModalVisible(false)} 
-        onSave={(p) => { handleSaveAlarmAction(alarms, p, setAlarms); setModalVisible(false); }} 
-      />
+      <AlarmSettingsModal />
     </View>
   );
 };
@@ -99,8 +148,30 @@ export const HomeScreen = () => {
 const s = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1 },
-  list: { padding: 16, paddingBottom: 100 },
-  fab: { position: "absolute", bottom: 24, right: 24, width: 60, height: 60, borderRadius: 30, alignItems: "center", justifyContent: "center", elevation: 4 },
+  list: { 
+    padding: tokens.spacing.xl, 
+    paddingBottom: 140, 
+  },
+  columnWrapper: {
+    justifyContent: "space-between",
+  },
+  fabContainer: {
+    position: "absolute",
+    bottom: 100,
+    right: tokens.spacing.xl,
+  },
+  fab: { 
+    width: 58, 
+    height: 58, 
+    borderRadius: 29, 
+    alignItems: "center", 
+    justifyContent: "center", 
+    shadowColor: tokens.colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    elevation: 8,
+  },
   swipeRow: { width: 80, justifyContent: "center" },
-  swipeBtn: { flex: 1, justifyContent: "center", alignItems: "center", borderRadius: 12, marginVertical: 4, marginRight: 12 },
+  swipeBtn: { flex: 1, justifyContent: "center", alignItems: "center", borderRadius: 24, marginVertical: 4, marginRight: 12 },
 });

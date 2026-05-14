@@ -5,6 +5,8 @@ import { activeAlarmIdAtom, alarmsAtom, wakeSessionAtom } from "../atoms/alarmAt
 import { initializeApp } from "../services/runtime/initApp";
 import { handleUrl } from "../services/runtime/handleDeepLink";
 
+import { startObserver, stopObserver } from "../services/runtime/alarmObserver";
+
 export const AlarmRuntimeProvider = ({ children }) => {
   const [alarms, setAlarms] = useAtom(alarmsAtom);
   const setActiveAlarmId = useSetAtom(activeAlarmIdAtom);
@@ -17,13 +19,21 @@ export const AlarmRuntimeProvider = ({ children }) => {
   }, [alarms, setActiveAlarmId, setWakeSession]);
 
   useEffect(() => {
-    initializeApp({ setAlarms, state: stateRef.current });
+    const init = async () => {
+      await initializeApp({ setAlarms, state: stateRef.current });
+      startObserver(stateRef.current);
+    };
+
+    init();
 
     const subscription = Linking.addEventListener("url", ({ url }) => {
       handleUrl(url, stateRef.current);
     });
 
-    return () => subscription.remove();
+    return () => {
+      subscription.remove();
+      stopObserver();
+    };
   }, [setAlarms, setActiveAlarmId, setWakeSession]);
 
   return children;

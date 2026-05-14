@@ -1,43 +1,43 @@
 export const colors = {
-  primary: "#126B5F",
-  primaryLight: "#E8F5F1",
-  primarySoft: "#D9EFE8",
-  accent: "#C28A2E",
-  accentLight: "#FFF4DC",
-
-  success: "#239A64",
-  warning: "#D99019",
-  danger: "#C8463A",
-  verification: "#2B7A78",
-  lockdown: "#6047A8",
-  ringing: "#C8463A",
-
-  background: "#F6F4EF",
+  // Primary Palette (Soft Purple - Inspired by reference)
+  primary: "#FF7A18",
+  primaryLight: "#FFF4E8",
+  primarySoft: "#FFE8CC",
+  
+  // Secondary Palette (Calm Green - Success/Consistency)
+  secondary: "#10B981",
+  secondaryLight: "#D1FAE5",
+  
+  // Neutral Palette (Dark Premium Navy)
+  background: "#F8FAFC", // Light mode bg
   white: "#FFFFFF",
   card: "#FFFFFF",
-  surface: "#ECE8DF",
-  surfaceRaised: "#FAF8F3",
+  surface: "#F1F5F9",
+  divider: "#E2E8F0",
+  
+  // Specific Dark Mode Tokens (Deep Navy Dark)
+  dark: {
+    background: "#020617", // Match reference deep dark
+    surface: "#0F172A",
+    card: "#1E293B",
+    border: "#334155",
+    accent: "#FF7A18",
+    text: "#F8FAFC",
+    textMuted: "#94A3B8",
+    glow: "rgba(255, 122, 24, 0.18)",
+    successGlow: "rgba(16, 185, 129, 0.15)",
+  },
 
   text: {
-    primary: "#141713",
-    secondary: "#5F675F",
-    muted: "#92988E",
-    light: "#FFFFFF",
+    primary: "#0F172A",
+    secondary: "#475569",
+    muted: "#94A3B8",
+    light: "#F8FAFC",
   },
 
-  dark: {
-    background: "#101613",
-    surface: "#18201C",
-    card: "#202922",
-    border: "#344037",
-    neon: "#9ED8C2",
-    glow: "rgba(158, 216, 194, 0.16)",
-    hud: "rgba(255, 255, 255, 0.06)",
-    accent: "#D4A64F",
-  },
-
-  border: "#E1DCD1",
-  dot: "#CFC8B9",
-  inactive: "#E8E3D8",
-  input: "#FAF8F3",
+  success: "#10B981",
+  warning: "#F59E0B",
+  danger: "#EF4444",
+  border: "#E2E8F0",
+  dot: "#CBD5E1",
 };

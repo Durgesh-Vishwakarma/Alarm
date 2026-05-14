@@ -1,85 +1,292 @@
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { typography } from "../../theme";
+import { LinearGradient } from "expo-linear-gradient";
+import Animated, { 
+  FadeIn, 
+  FadeInDown, 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withSpring 
+} from "react-native-reanimated";
+import { tokens, typography } from "../../theme";
+import { haptics } from "../../services/hapticService";
+import { CustomSwitch } from "../../components/CustomSwitch";
 
-export const Dashboard = ({ nextAlarm, wakeStats, completionRate, recommendations, theme }) => (
-  <View style={s.container}>
-    {/* Next Alarm Card */}
-    <View style={[s.nextCard, { backgroundColor: theme.heroCard }]}>
-      <Text style={s.eyebrow}>NEXT ALARM</Text>
-      {nextAlarm ? (
-        <View style={s.timeRow}>
-          <Text style={s.time}>{nextAlarm.time}</Text>
-          <Text style={[s.period, { color: theme.heroNeon }]}>{nextAlarm.period}</Text>
+export const Dashboard = ({ nextAlarm, wakeStats, completionRate, recommendations, theme, toggleAlarm }) => {
+  const heroScale = useSharedValue(1);
+
+  const heroAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: heroScale.value }],
+  }));
+
+  const onToggle = () => {
+    haptics.selection();
+    if (nextAlarm) toggleAlarm(nextAlarm.id);
+  };
+
+  const handleHeroIn = () => {
+    heroScale.value = withSpring(0.98, { damping: 15, stiffness: 300 });
+    haptics.impact("light");
+  };
+
+  const handleHeroOut = () => {
+    heroScale.value = withSpring(1, { damping: 15, stiffness: 300 });
+  };
+
+  return (
+    <Animated.View entering={FadeIn.duration(tokens.animation.duration.slow)} style={s.container}>
+      {/* Emotional Header Section */}
+      <Animated.View entering={FadeInDown.delay(100).duration(tokens.animation.duration.normal)} style={s.header}>
+        <View>
+          <Text style={[s.greeting, { color: theme.textSecondary }]}>Good morning,</Text>
+          <Text style={[s.name, { color: theme.textPrimary }]}>Alex 👋</Text>
         </View>
-      ) : (
-        <Text style={s.noAlarm}>No alarm set</Text>
-      )}
-      <Text style={[s.label, { color: "rgba(255,255,255,0.5)" }]}>
-        {nextAlarm ? nextAlarm.label || "Alarm" : "Tap + to start"}
-      </Text>
-    </View>
-
-    {/* Stats Row */}
-    <View style={s.stats}>
-      <StatCard
-        icon="flame"
-        value={`${wakeStats?.wakeStreak ?? 0}d`}
-        label="Streak"
-        color="#F59E0B"
-        theme={theme}
-      />
-      <StatCard
-        icon="checkmark-done"
-        value={`${completionRate}%`}
-        label="Win Rate"
-        color={theme.primary}
-        theme={theme}
-      />
-    </View>
-
-    {/* AI Coach */}
-    <View style={[s.coach, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
-      <View style={[s.coachAccent, { backgroundColor: theme.primary }]} />
-      <View style={s.coachContent}>
-        <View style={[s.badge, { backgroundColor: theme.primaryLight }]}>
-          <Ionicons name="sparkles" size={12} color={theme.primary} />
-          <Text style={[s.badgeTxt, { color: theme.primary }]}>AI COACH</Text>
+        <View style={[s.avatar, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}>
+          <Ionicons name="person" size={20} color={theme.textMuted} />
         </View>
-        <Text style={[s.coachTxt, { color: theme.textSecondary }]}>{recommendations}</Text>
-      </View>
-    </View>
-  </View>
-);
+      </Animated.View>
 
-const StatCard = ({ icon, value, label, color, theme }) => (
-  <View style={[s.statCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
-    <View style={[s.statIcon, { backgroundColor: theme.surface }]}>
-      <Ionicons name={icon} size={18} color={color} />
-    </View>
-    <Text style={[s.statVal, { color: theme.textPrimary }]}>{value}</Text>
-    <Text style={[s.statLabel, { color: theme.textMuted }]}>{label}</Text>
-  </View>
-);
+      {/* Premium Next Alarm Hero Card with Lighting (Glow) */}
+      <Animated.View 
+        entering={FadeInDown.delay(200).duration(tokens.animation.duration.normal)}
+        style={[s.heroContainer, nextAlarm?.isActive && s.heroGlow, heroAnimatedStyle]}
+      >
+        <Pressable 
+          onPressIn={handleHeroIn}
+          onPressOut={handleHeroOut}
+          onPress={onToggle}
+          style={{ flex: 1 }}
+        >
+          <LinearGradient
+            colors={
+              nextAlarm?.isActive
+                ? [theme.primary, tokens.colors.primaryDark, "#4C32B8"]
+                : ["#1E293B", "#0F172A"]
+            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={s.heroBg}
+          />
+          <View style={s.heroContent}>
+            {nextAlarm ? (
+              <>
+                <View style={s.nextHeader}>
+                  <View style={s.heroLabelRow}>
+                    <Ionicons name="alarm" size={14} color="rgba(255,255,255,0.8)" />
+                    <Text style={s.nextLabel}>NEXT ALARM</Text>
+                  </View>
+                  <CustomSwitch
+                    value={nextAlarm?.isActive || false}
+                    onValueChange={onToggle}
+                    activeColor="rgba(255,255,255,0.4)"
+                  />
+                </View>
+                
+                <View style={s.timeRow}>
+                  <Text style={s.time}>{nextAlarm.time}</Text>
+                  <Text style={s.period}>{nextAlarm.period}</Text>
+                </View>
+                
+                <View style={s.heroFooter}>
+                  <View style={s.taskRow}>
+                    <View style={s.taskIconBox}>
+                      <Ionicons name="sparkles" size={12} color="#FFF" />
+                    </View>
+                    <Text style={s.task}>{nextAlarm?.task || "Tap + to start"}</Text>
+                  </View>
+                  <Text style={s.metaText}>In {nextAlarm?.mins || 0} mins</Text>
+                </View>
+              </>
+            ) : (
+              <View style={s.emptyHero}>
+                <View style={s.emptyIconWrap}>
+                  <Ionicons name="moon" size={32} color={theme.primary} />
+                </View>
+                <View style={s.emptyTextWrap}>
+                  <Text style={s.emptyTitle}>Ready for tomorrow?</Text>
+                  <Text style={s.emptySubtitle}>Create a wake mission to start your streak.</Text>
+                </View>
+                <View style={s.emptyCta}>
+                  <Text style={[s.emptyCtaText, { color: theme.primary }]}>Create Mission</Text>
+                  <Ionicons name="arrow-forward" size={16} color={theme.primary} />
+                </View>
+              </View>
+            )}
+          </View>
+        </Pressable>
+      </Animated.View>
+
+      <Animated.Text 
+        entering={FadeInDown.delay(300).duration(tokens.animation.duration.normal)}
+        style={[s.sectionTitle, { color: theme.textPrimary }]}
+      >
+        Your Alarms
+      </Animated.Text>
+    </Animated.View>
+  );
+};
 
 const s = StyleSheet.create({
-  container: { marginBottom: 20 },
-  nextCard: { borderRadius: 20, padding: 22, marginBottom: 12 },
-  eyebrow: { fontFamily: typography.family.bold, fontSize: 10, color: "rgba(255,255,255,0.4)", letterSpacing: 2 },
-  timeRow: { flexDirection: "row", alignItems: "flex-end", gap: 8, marginVertical: 8 },
-  time: { fontFamily: typography.family.extraBold, fontSize: 48, color: "#FFF" },
-  period: { fontFamily: typography.family.bold, fontSize: 18, marginBottom: 8 },
-  noAlarm: { fontFamily: typography.family.bold, fontSize: 24, color: "rgba(255,255,255,0.2)", marginVertical: 12 },
-  label: { fontFamily: typography.family.medium, fontSize: 13 },
-  stats: { flexDirection: "row", gap: 10, marginBottom: 12 },
-  statCard: { flex: 1, borderRadius: 16, padding: 16, borderWidth: 1 },
-  statIcon: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  statVal: { fontFamily: typography.family.bold, fontSize: 22, marginTop: 8 },
-  statLabel: { fontFamily: typography.family.medium, fontSize: 10, textTransform: "uppercase", letterSpacing: 1 },
-  coach: { borderRadius: 16, padding: 16, borderWidth: 1, flexDirection: "row", overflow: "hidden" },
-  coachAccent: { position: "absolute", left: 0, top: 0, bottom: 0, width: 4 },
-  coachContent: { paddingLeft: 12, gap: 8 },
-  badge: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, alignSelf: "flex-start" },
-  badgeTxt: { fontFamily: typography.family.bold, fontSize: 9 },
-  coachTxt: { fontFamily: typography.family.medium, fontSize: 13, lineHeight: 18 },
+  container: { 
+    marginBottom: tokens.spacing.lg,
+    paddingTop: tokens.spacing.sm,
+  },
+  header: { 
+    flexDirection: "row", 
+    justifyContent: "space-between", 
+    alignItems: "flex-start", 
+    marginBottom: tokens.spacing.xl,
+    paddingHorizontal: 4,
+  },
+  greeting: { 
+    fontFamily: typography.family.metadata, 
+    fontSize: tokens.typography.size.metadata,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: tokens.spacing.xs,
+  },
+  name: {
+    fontFamily: typography.family.section,
+    fontSize: 40,
+    letterSpacing: -0.8,
+  },
+  avatar: { 
+    width: 48, 
+    height: 48, 
+    borderRadius: 24, 
+    alignItems: "center", 
+    justifyContent: "center", 
+    borderWidth: 1,
+  },
+  heroContainer: {
+    borderRadius: tokens.radius.xl,
+    overflow: "hidden",
+    marginBottom: tokens.spacing.giant,
+    elevation: 8,
+  },
+  heroGlow: {
+    ...tokens.shadows.glow,
+  },
+  heroBg: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  heroContent: {
+    padding: tokens.spacing.xxl,
+  },
+  nextHeader: { 
+    flexDirection: "row", 
+    justifyContent: "space-between", 
+    alignItems: "center",
+  },
+  heroLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: tokens.spacing.sm,
+  },
+  nextLabel: { 
+    fontFamily: typography.family.metadata, 
+    fontSize: tokens.typography.size.tiny, 
+    letterSpacing: 1,
+    color: "rgba(255,255,255,0.7)", 
+  },
+  timeRow: { 
+    flexDirection: "row", 
+    alignItems: "flex-end", 
+    gap: 8, 
+    marginVertical: tokens.spacing.md,
+  },
+  time: { 
+    fontFamily: typography.family.hero, 
+    fontSize: 64, // Keeping 64 for hero time as it's a specific "Huge" display beyond standard Hero size
+    color: "#FFF",
+    letterSpacing: -2,
+    lineHeight: 72,
+  },
+  period: { 
+    fontFamily: typography.family.section, 
+    fontSize: 20, 
+    color: "rgba(255,255,255,0.8)",
+    marginBottom: tokens.spacing.lg,
+  },
+  emptyHero: {
+    marginVertical: tokens.spacing.sm,
+    alignItems: "flex-start",
+  },
+  emptyIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(139, 92, 246, 0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: tokens.spacing.lg,
+  },
+  emptyTextWrap: {
+    gap: tokens.spacing.xs,
+    marginBottom: tokens.spacing.xl,
+  },
+  emptyTitle: { 
+    fontFamily: typography.family.section, 
+    fontSize: tokens.typography.size.card, 
+    color: "#FFF", 
+  },
+  emptySubtitle: {
+    fontFamily: typography.family.metadata,
+    fontSize: tokens.typography.size.body,
+    color: "rgba(255,255,255,0.6)",
+    lineHeight: 20,
+  },
+  emptyCta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: tokens.spacing.sm,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    paddingHorizontal: tokens.spacing.lg,
+    paddingVertical: tokens.spacing.sm,
+    borderRadius: tokens.radius.full,
+  },
+  emptyCtaText: {
+    fontFamily: typography.family.card,
+    fontSize: tokens.typography.size.body,
+  },
+  heroFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: tokens.spacing.sm,
+  },
+  taskRow: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    gap: tokens.spacing.sm,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    paddingHorizontal: tokens.spacing.md,
+    paddingVertical: tokens.spacing.xs,
+    borderRadius: tokens.radius.full,
+  },
+  taskIconBox: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  task: { 
+    fontFamily: typography.family.metadata, 
+    fontSize: tokens.typography.size.body, 
+    color: "#FFF",
+  },
+  metaText: {
+    fontFamily: typography.family.metadata,
+    fontSize: tokens.typography.size.caption,
+    color: "rgba(255,255,255,0.6)",
+  },
+  sectionTitle: { 
+    fontFamily: typography.family.section, 
+    fontSize: tokens.typography.size.section, 
+    marginBottom: tokens.spacing.lg,
+    paddingHorizontal: 4,
+    letterSpacing: -0.5,
+  },
 });

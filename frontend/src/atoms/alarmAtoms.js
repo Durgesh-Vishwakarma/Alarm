@@ -3,6 +3,28 @@ import { atom } from 'jotai';
 // Core alarm list
 export const alarmsAtom = atom([]);
 
+/** Alarm editor draft — survives re-renders; reset only when opening/closing flows set it */
+export const INITIAL_ALARM_DRAFT = {
+  hour: "07",
+  minute: "30",
+  period: "AM",
+  label: "",
+  repeatDays: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+  challengeId: "toothbrush",
+  strictness: "balanced",
+  ringtone: "alarm_neon",
+  vibrate: true,
+  snoozeLimit: 1,
+  isActive: true,
+  customChallengeTitle: "",
+  customChallengeHints: "",
+};
+
+export const alarmDraftAtom = atom({ ...INITIAL_ALARM_DRAFT });
+export const alarmModalVisibleAtom = atom(false);
+/** null = creating new alarm; string id = editing */
+export const alarmEditingIdAtom = atom(null);
+
 // The currently ringing/active alarm ID
 export const activeAlarmIdAtom = atom(null);
 
@@ -34,6 +56,7 @@ export const INITIAL_PREFERENCES = {
   hapticsEnabled: true,
   offlineFallback: false,
   autoLaunchCamera: true,
+  smartWakeEnabled: true,
 };
 
 export const preferencesAtom = atom(INITIAL_PREFERENCES);

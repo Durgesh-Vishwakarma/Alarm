@@ -150,6 +150,7 @@ export const scheduleAlarmNotification = async (alarm) => {
         },
         sound: alarm.ringtone === "Silent" ? false : true,
         priority: Notifications.AndroidNotificationPriority?.MAX,
+        ...(Platform.OS === "android" ? { channelId: "alarm-channel" } : {}),
       },
       trigger,
     });
@@ -165,7 +166,6 @@ export const scheduleAlarmNotification = async (alarm) => {
           hour,
           minute,
           repeats: true,
-          channelId: "alarm-channel",
         }),
       ),
     );
@@ -174,7 +174,6 @@ export const scheduleAlarmNotification = async (alarm) => {
       await scheduleOne({
         type: dateType,
         date: getNextAlarmDate(alarm),
-        channelId: "alarm-channel",
       }),
     ];
   }

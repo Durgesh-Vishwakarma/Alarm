@@ -1,4 +1,6 @@
 import * as FileSystem from "expo-file-system/legacy";
+import { getChallengeById } from "../data/challengeCatalog";
+import { RINGTONE_OPTIONS } from "../data/ringtones";
 
 /**
  * SnapWake Production Storage Service
@@ -33,6 +35,71 @@ const SEED_ALARMS = [
  */
 const generateId = () => {
   return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+};
+
+const STRICTNESS_TO_AI = {
+  gentle: "Standard",
+  balanced: "Strict",
+  strict: "Lockdown",
+};
+
+const RINGTONE_LABEL_TO_KEY = {
+  "Morning Glow": "alarm_neon",
+  "Neon Alarm": "alarm_neon",
+  Cincin: "cincin",
+  iPhone: "iphone",
+  Ringtone: "ringtone",
+  Silent: "Silent",
+};
+
+/**
+ * Converts modal draft (hour/minute/period, strictness ids, labels) into a persisted alarm shape.
+ * Required for HomeScreen cards, getNextAlarmDate, and native/expo schedulers (they expect `time` "HH:MM").
+ */
+export const normalizeAlarmPayload = (form) => {
+  const hour = String(form.hour ?? "07").padStart(2, "0");
+  const minute = String(form.minute ?? "00").padStart(2, "0");
+  const period = form.period === "PM" ? "PM" : "AM";
+  const time = `${hour}:${minute}`;
+  const id = form.id || generateId();
+
+  let challengeTitle = form.challengeTitle;
+  let targets = Array.isArray(form.targets) ? [...form.targets] : [];
+
+  if (form.challengeId === "custom") {
+    challengeTitle = (form.customChallengeTitle || "").trim() || "Custom challenge";
+    const hints = (form.customChallengeHints || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    targets = hints.length ? hints : ["photo", "proof"];
+  } else {
+    const ch = getChallengeById(form.challengeId);
+    challengeTitle = challengeTitle || ch.title;
+    if (!targets.length) targets = [...(ch.targets || [])];
+  }
+
+  const ringRaw = form.ringtone || "alarm_neon";
+  const ringKey = RINGTONE_OPTIONS.some((o) => o.value === ringRaw)
+    ? ringRaw
+    : RINGTONE_LABEL_TO_KEY[ringRaw] || "alarm_neon";
+
+  const antiCheatStrictness =
+    STRICTNESS_TO_AI[form.strictness] || form.antiCheatStrictness || "Standard";
+
+  return {
+    ...form,
+    id,
+    hour,
+    minute,
+    time,
+    period,
+    challengeTitle,
+    targets,
+    antiCheatStrictness,
+    ringtone: ringKey,
+    isActive: form.isActive !== false,
+  };
 };
 
 /**

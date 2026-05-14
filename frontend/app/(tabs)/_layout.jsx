@@ -1,73 +1,152 @@
 import { Ionicons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 import { Tabs } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { StyleSheet, View } from "react-native";
-import { typography } from "../../src/theme";
+import { Platform, StyleSheet, View } from "react-native";
+import { tokens } from "../../src/theme";
 import { useTheme } from "../../src/theme/ThemeContext";
 
-const TabIcon = ({ name, color, focused }) => (
-  <View style={styles.tabIconWrap}>
-    <Ionicons name={name} size={24} color={color} />
-    <View style={[styles.tabDot, focused && styles.tabDotActive]} />
+const TAB_HEIGHT = 76;
+
+const TabIcon = ({ name, color, focused, theme }) => (
+  <View style={s.tabIconWrap}>
+    <View
+      style={[
+        s.iconHighlight,
+        focused && {
+          backgroundColor: theme.primaryLight,
+          ...Platform.select({
+            ios: tokens.shadows.sm,
+            android: { elevation: 2 },
+          }),
+        },
+      ]}
+    >
+      <Ionicons
+        name={focused ? name : `${name}-outline`}
+        size={focused ? 26 : 24}
+        color={focused ? theme.primary : theme.textMuted}
+      />
+    </View>
   </View>
 );
-
-const AlarmTabIcon    = (props) => <TabIcon name="alarm"   {...props} />;
-const StreaksTabIcon  = (props) => <TabIcon name="flame"   {...props} />;
-const SettingsTabIcon = (props) => <TabIcon name="options" {...props} />;
 
 export default function TabLayout() {
   const { theme, isDark } = useTheme();
 
-  // Tab bar always uses a deep dark surface so icons stay visible regardless of theme
-  const tabBg     = isDark ? theme.heroCard   : "#111816";
-  const tabBorder = isDark ? theme.heroBorder : "#1E2A20";
+  const barBg =
+    Platform.OS === "ios"
+      ? "transparent"
+      : isDark
+        ? "rgba(15, 23, 42, 0.94)"
+        : "rgba(255, 255, 255, 0.92)";
 
   return (
-    <>
-      {/*
-        StatusBar style:
-        - "light" → white clock/battery/signal icons (for dark backgrounds)
-        - "dark"  → black icons (for light backgrounds)
-        We always use "light" here because the tab bar is always dark,
-        but the status bar sits above the screen content, so we drive it
-        from the theme's statusBar value to keep indicators visible.
-      */}
-      <StatusBar
-        style={theme.statusBar}
-        backgroundColor={theme.bg}
-        translucent={false}
-      />
+    <View style={{ flex: 1, backgroundColor: theme.bg }}>
+      <StatusBar style={isDark ? "light" : "dark"} />
       <Tabs
         screenOptions={{
           headerShown: false,
           tabBarActiveTintColor: theme.primary,
-          tabBarInactiveTintColor: "rgba(255,255,255,0.4)",
+          tabBarInactiveTintColor: theme.textMuted,
+          tabBarShowLabel: false,
           tabBarStyle: {
-            backgroundColor: tabBg,
-            borderTopWidth: 1,
-            borderTopColor: tabBorder,
-            height: 65,
-            paddingBottom: 10,
-            paddingTop: 10,
+            position: "absolute",
+            bottom: 14,
+            left: 18,
+            right: 18,
+            height: TAB_HEIGHT,
+            borderRadius: 28,
+            borderTopWidth: 0,
+            backgroundColor: barBg,
+            borderWidth: 1,
+            borderColor: isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(15, 23, 42, 0.06)",
+            paddingHorizontal: 8,
+            ...Platform.select({
+              ios: tokens.shadows.md,
+              android: { elevation: 12 },
+            }),
           },
-          tabBarLabelStyle: {
-            fontFamily: typography.family.bold,
-            fontSize: 11,
-            marginTop: 2,
-          },
+          tabBarBackground: () =>
+            Platform.OS === "ios" ? (
+              <View style={[StyleSheet.absoluteFillObject, { borderRadius: 28, overflow: "hidden" }]}>
+                <BlurView intensity={isDark ? 42 : 72} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFillObject} />
+                <View
+                  style={[
+                    StyleSheet.absoluteFillObject,
+                    {
+                      borderRadius: 28,
+                      borderTopWidth: StyleSheet.hairlineWidth,
+                      borderTopColor: "rgba(255, 255, 255, 0.12)",
+                    },
+                  ]}
+                  pointerEvents="none"
+                />
+              </View>
+            ) : (
+              <View style={[StyleSheet.absoluteFillObject, { borderRadius: 28, overflow: "hidden" }]}>
+                <LinearGradient
+                  colors={
+                    isDark
+                      ? ["rgba(30, 41, 59, 0.98)", "rgba(15, 23, 42, 0.99)"]
+                      : ["rgba(255, 255, 255, 0.98)", "rgba(248, 250, 252, 0.95)"]
+                  }
+                  style={StyleSheet.absoluteFillObject}
+                />
+                <View
+                  style={[
+                    StyleSheet.absoluteFillObject,
+                    {
+                      borderRadius: 28,
+                      borderTopWidth: StyleSheet.hairlineWidth,
+                      borderTopColor: "rgba(255, 255, 255, 0.14)",
+                    },
+                  ]}
+                  pointerEvents="none"
+                />
+              </View>
+            ),
         }}
       >
-        <Tabs.Screen name="home"     options={{ title: "Alarms",   tabBarIcon: AlarmTabIcon    }} />
-        <Tabs.Screen name="streaks"  options={{ title: "Streaks",  tabBarIcon: StreaksTabIcon  }} />
-        <Tabs.Screen name="settings" options={{ title: "Settings", tabBarIcon: SettingsTabIcon }} />
+        <Tabs.Screen
+          name="home"
+          options={{
+            title: "Home",
+            tabBarIcon: (p) => <TabIcon name="home" theme={theme} {...p} />,
+          }}
+        />
+        <Tabs.Screen
+          name="streaks"
+          options={{
+            title: "Stats",
+            tabBarIcon: (p) => <TabIcon name="stats-chart" theme={theme} {...p} />,
+          }}
+        />
+        <Tabs.Screen
+          name="settings"
+          options={{
+            title: "Settings",
+            tabBarIcon: (p) => <TabIcon name="settings" theme={theme} {...p} />,
+          }}
+        />
       </Tabs>
-    </>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  tabIconWrap: { alignItems: "center", justifyContent: "center", gap: 4 },
-  tabDot:      { width: 5, height: 5, borderRadius: 3, backgroundColor: "transparent" },
-  tabDotActive:{ backgroundColor: "#FFFFFF" },
+const s = StyleSheet.create({
+  tabIconWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+    height: "100%",
+    paddingTop: 10,
+  },
+  iconHighlight: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });

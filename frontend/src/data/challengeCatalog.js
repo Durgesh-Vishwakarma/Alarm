@@ -2,6 +2,10 @@ export const DIFFICULTY_LEVELS = ['Easy', 'Focused', 'Strict'];
 
 export const STRICTNESS_LEVELS = ['Standard', 'Strict', 'Lockdown'];
 
+const CHALLENGE_ID_ALIASES = {
+  brush_teeth: "toothbrush",
+};
+
 export const AI_CHALLENGES = [
   {
     id: 'toothbrush',
@@ -63,10 +67,25 @@ export const AI_CHALLENGES = [
     category: 'Bedroom',
     cameraRequired: true,
   },
+  {
+    id: "custom",
+    title: "Custom challenge",
+    icon: "create-outline",
+    difficulty: "Your wording",
+    aiType: "Semantic",
+    estimatedTime: "15 sec",
+    targets: ["photo", "proof"],
+    verificationTips: "Describe what the photo should show",
+    category: "Custom",
+    cameraRequired: true,
+  },
 ];
 
-export const getChallengeById = (id) =>
-  AI_CHALLENGES.find((challenge) => challenge.id === id) || AI_CHALLENGES[0];
+export const getChallengeById = (id) => {
+  if (!id) return AI_CHALLENGES[0];
+  const resolved = CHALLENGE_ID_ALIASES[id] || id;
+  return AI_CHALLENGES.find((challenge) => challenge.id === resolved) || AI_CHALLENGES[0];
+};
 
 export const getChallengeByTitle = (title) =>
   AI_CHALLENGES.find((challenge) => challenge.title === title) || AI_CHALLENGES[0];

@@ -1,24 +1,37 @@
+import { tokens } from "./tokens";
+
+/** Plus Jakarta stack + legacy aliases used across screens */
 export const typography = {
   family: {
-    regular: 'Outfit-Regular',
-    medium: 'Outfit-Medium',     // Added for metadata and sub-headings
-    semiBold: 'Outfit-SemiBold', // Added for interactive elements/buttons
-    bold: 'Outfit-Bold',
-    extraBold: 'Outfit-ExtraBold',
+    ...tokens.typography.fontFamily,
+    bold: "Plus-Bold",
+    medium: "Plus-Medium",
+    regular: "Plus-Regular",
   },
-  size: {
-    xs: 12,
-    sm: 14,
-    md: 16,
-    lg: 18,
-    xl: 20,
-    xxl: 24,
-    huge: 32,
-    giant: 40,
-  },
-  lineHeight: {
-    tight: 1.2,
-    normal: 1.5,
-    relaxed: 1.8,
+  size: tokens.typography.size,
+  lineHeight: tokens.typography.lineHeight,
+  
+  // Backward compatibility aliases if needed
+  hierarchy: {
+    hero: {
+      fontFamily: tokens.typography.fontFamily.hero,
+      fontSize: tokens.typography.size.hero,
+    },
+    section: {
+      fontFamily: tokens.typography.fontFamily.section,
+      fontSize: tokens.typography.size.section,
+    },
+    card: {
+      fontFamily: tokens.typography.fontFamily.card,
+      fontSize: tokens.typography.size.card,
+    },
+    metadata: {
+      fontFamily: tokens.typography.fontFamily.metadata,
+      fontSize: tokens.typography.size.metadata,
+    },
+    caption: {
+      fontFamily: tokens.typography.fontFamily.caption,
+      fontSize: tokens.typography.size.caption,
+    },
   }
 };

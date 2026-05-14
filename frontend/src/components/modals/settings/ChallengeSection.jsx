@@ -1,79 +1,134 @@
-import { View, Text, TouchableOpacity, TextInput, StyleSheet, useWindowDimensions } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, TextInput } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { typography } from "../../../theme";
-import { AI_CHALLENGES, DIFFICULTY_LEVELS, STRICTNESS_LEVELS, getChallengeById } from "../../../data/challengeCatalog";
+import { typography, tokens } from "../../../theme";
+import { AI_CHALLENGES } from "../../../data/challengeCatalog";
 
-const CUSTOM_CHALLENGE = { id: "custom", title: "Custom", icon: "create-outline", difficulty: "Focused", verificationTips: "Describe it." };
-const ALL_CHALLENGES = [...AI_CHALLENGES, CUSTOM_CHALLENGE];
+export const ChallengeSection = ({ form, set, theme }) => (
+  <View style={s.container}>
+    <Text style={[s.label, { color: theme.textSecondary }]}>CHOOSE CHALLENGE</Text>
 
-export const ChallengeSection = ({ form, set, selectChallenge, extractTargets, theme }) => {
-  const { width } = useWindowDimensions();
-  const tileWidth = Math.floor((width - 68) / 2);
-
-  return (
-    <View style={[s.section, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
-      <View style={s.sectionHeader}>
-        <Ionicons name="rocket-outline" size={16} color={theme.primary} />
-        <Text style={[s.sectionTitle, { color: theme.textSecondary }]}>Wake-up Challenge</Text>
-      </View>
-
-      <View style={s.grid}>
-        {ALL_CHALLENGES.map((c) => {
-          const on = form.challengeId === c.id;
-          return (
-            <TouchableOpacity
-              key={c.id}
-              style={[s.cBox, { width: tileWidth, backgroundColor: theme.surface, borderColor: theme.cardBorder }, on && { borderColor: theme.primary, backgroundColor: theme.heroCard }]}
-              onPress={() => selectChallenge(c)}
-            >
-              <Ionicons name={c.icon} size={20} color={on ? theme.primary : theme.textMuted} />
-              <Text style={[s.cTitle, { color: on ? theme.textPrimary : theme.textSecondary }]}>{c.title}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      {form.challengeId === "custom" && (
-        <View style={[s.customBox, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}>
-          <TextInput
-            style={[s.customInput, { color: theme.textPrimary }]}
-            placeholder="What should AI look for?"
-            placeholderTextColor={theme.textMuted}
-            value={form.customTask}
-            onChangeText={(v) => set("customTask", v)}
-            multiline
-            maxLength={120}
-          />
-        </View>
-      )}
-
-      <Text style={[s.label, { color: theme.textMuted }]}>Strictness</Text>
-      <View style={s.row}>
-        {STRICTNESS_LEVELS.map((lv) => (
+    <View style={s.grid}>
+      {AI_CHALLENGES.map((item) => {
+        const isSelected = form.challengeId === item.id;
+        return (
           <TouchableOpacity
-            key={lv}
-            style={[s.seg, { backgroundColor: theme.surface }, form.antiCheatStrictness === lv && { backgroundColor: theme.primary }]}
-            onPress={() => set("antiCheatStrictness", lv)}
+            key={item.id}
+            style={[
+              s.card,
+              { backgroundColor: isSelected ? `${theme.primary}18` : theme.surface },
+              isSelected && { borderColor: theme.primary, borderWidth: 2 },
+            ]}
+            onPress={() => set("challengeId", item.id)}
           >
-            <Text style={[s.segTxt, { color: form.antiCheatStrictness === lv ? "#FFF" : theme.textSecondary }]}>{lv}</Text>
+            <View
+              style={[
+                s.iconBox,
+                { backgroundColor: isSelected ? `${theme.primary}28` : `${theme.cardBorder}40` },
+              ]}
+            >
+              <Ionicons name={item.icon} size={22} color={isSelected ? theme.primary : theme.textSecondary} />
+            </View>
+            <View style={s.cardText}>
+              <Text style={[s.cardTitle, { color: theme.textPrimary }]} numberOfLines={2}>
+                {item.title}
+              </Text>
+              <Text style={[s.difficulty, { color: theme.textMuted }]}>{item.difficulty}</Text>
+            </View>
           </TouchableOpacity>
-        ))}
-      </View>
+        );
+      })}
     </View>
-  );
-};
+
+    {form.challengeId === "custom" ? (
+      <View style={[s.customBox, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}>
+        <Text style={[s.customLabel, { color: theme.textSecondary }]}>Describe your challenge</Text>
+        <TextInput
+          style={[s.input, { color: theme.textPrimary, borderColor: theme.cardBorder }]}
+          placeholder="e.g. Photo of your running shoes"
+          placeholderTextColor={theme.textMuted}
+          value={form.customChallengeTitle || ""}
+          onChangeText={(t) => set("customChallengeTitle", t)}
+        />
+        <Text style={[s.customHint, { color: theme.textMuted }]}>
+          Optional keywords for AI (comma-separated)
+        </Text>
+        <TextInput
+          style={[s.input, { color: theme.textPrimary, borderColor: theme.cardBorder }]}
+          placeholder="shoes, sneakers, floor"
+          placeholderTextColor={theme.textMuted}
+          value={form.customChallengeHints || ""}
+          onChangeText={(t) => set("customChallengeHints", t)}
+        />
+      </View>
+    ) : null}
+  </View>
+);
 
 const s = StyleSheet.create({
-  section: { borderRadius: 16, padding: 18, marginBottom: 12, borderLeftWidth: 4, borderLeftColor: "#6366F1", borderWidth: 1 },
-  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 },
-  sectionTitle: { fontSize: 12, fontFamily: typography.family.extraBold, textTransform: "uppercase" },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "space-between" },
-  cBox: { borderRadius: 12, padding: 12, alignItems: "center", gap: 6, borderWidth: 1.5 },
-  cTitle: { fontSize: 12, fontFamily: typography.family.bold },
-  customBox: { marginTop: 12, borderRadius: 12, padding: 12, borderWidth: 1 },
-  customInput: { fontSize: 14, fontFamily: typography.family.bold, minHeight: 60 },
-  label: { fontSize: 10, fontFamily: typography.family.bold, marginTop: 16, marginBottom: 8, textTransform: "uppercase" },
-  row: { flexDirection: "row", gap: 8 },
-  seg: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: "center" },
-  segTxt: { fontSize: 12, fontFamily: typography.family.bold },
+  container: { marginTop: tokens.spacing.md },
+  label: {
+    fontFamily: typography.family.metadata,
+    fontSize: 12,
+    letterSpacing: 1.5,
+    marginBottom: tokens.spacing.lg,
+    paddingHorizontal: 4,
+  },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: tokens.spacing.md,
+  },
+  card: {
+    width: "47%",
+    padding: tokens.spacing.md,
+    borderRadius: tokens.radius.lg,
+    gap: tokens.spacing.sm,
+    borderWidth: 2,
+    borderColor: "transparent",
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  iconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: tokens.radius.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cardText: { flex: 1 },
+  cardTitle: {
+    fontFamily: typography.family.card,
+    fontSize: 13,
+    marginBottom: 2,
+  },
+  difficulty: {
+    fontFamily: typography.family.metadata,
+    fontSize: 10,
+    textTransform: "uppercase",
+  },
+  customBox: {
+    marginTop: tokens.spacing.lg,
+    padding: tokens.spacing.lg,
+    borderRadius: tokens.radius.lg,
+    borderWidth: 1,
+    gap: tokens.spacing.sm,
+  },
+  customLabel: {
+    fontFamily: typography.family.metadata,
+    fontSize: 12,
+    letterSpacing: 0.5,
+  },
+  customHint: {
+    fontFamily: typography.family.metadata,
+    fontSize: 11,
+    marginTop: tokens.spacing.xs,
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: tokens.radius.md,
+    paddingHorizontal: tokens.spacing.md,
+    paddingVertical: tokens.spacing.sm,
+    fontFamily: typography.family.metadata,
+    fontSize: 15,
+  },
 });

@@ -1,5 +1,5 @@
 import { StyleSheet, TouchableOpacity, View } from "react-native";
-import { colors, spacing } from "../theme";
+import { spacing } from "../theme";
 import { useTheme } from "../theme/ThemeContext";
 
 export const Card = ({
@@ -13,9 +13,8 @@ export const Card = ({
   const { theme } = useTheme();
   const Component = onPress ? TouchableOpacity : View;
 
-  // Base card uses theme tokens; variant overrides for special states
   const variantStyle = variant === "active"
-    ? { backgroundColor: theme.card, borderColor: theme.primary }
+    ? { backgroundColor: theme.card, borderColor: theme.primary, borderWidth: 1.5 }
     : variant === "danger"
     ? { backgroundColor: theme.card, borderColor: theme.danger, borderWidth: 1.5 }
     : { backgroundColor: theme.card, borderColor: theme.cardBorder };
@@ -28,7 +27,7 @@ export const Card = ({
         variantStyle,
         style,
       ]}
-      {...(onPress ? { onPress, activeOpacity: 0.88, ...touchableProps } : {})}
+      {...(onPress ? { onPress, activeOpacity: 0.92, ...touchableProps } : {})}
     >
       {children}
     </Component>
@@ -37,7 +36,8 @@ export const Card = ({
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 20,
+    borderRadius: 24, // Premium rounded-xl style
     borderWidth: 1,
+    overflow: "hidden",
   },
 });
