@@ -34,12 +34,12 @@ export const ringtoneOptions = [
 
 export const challenges = [
   {
-    id: "scan-toothbrush",
-    title: "Scan Toothbrush",
-    description: "Take a photo of your toothbrush to prove you are awake",
-    icon: "flashlight",
-    iconColor: "#FF5A00",
-    backgroundColor: "#FFF0E8",
+  id: "scan-toothbrush",
+  title: "Scan Toothbrush",
+  description: "Take a photo of your toothbrush to prove you are awake",
+  icon: "sparkles-outline",
+  iconColor: "#FF5A00",
+  backgroundColor: "#FFF0E8",
   },
 
   {
