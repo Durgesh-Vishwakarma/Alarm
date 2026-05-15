@@ -1,9 +1,12 @@
 import {
   Outfit_400Regular,
   Outfit_500Medium,
+  Outfit_600SemiBold,
+  Outfit_700Bold,
   useFonts as useOutfitFonts,
 } from '@expo-google-fonts/outfit';
 import {
+  PlusJakartaSans_600SemiBold,
   PlusJakartaSans_700Bold,
   useFonts as useJakartaFonts,
 } from '@expo-google-fonts/plus-jakarta-sans';
@@ -20,8 +23,11 @@ export default function RootLayout() {
   const [outfitLoaded] = useOutfitFonts({
     Outfit_400Regular,
     Outfit_500Medium,
+    Outfit_600SemiBold,
+    Outfit_700Bold,
   });
   const [jakartaLoaded] = useJakartaFonts({
+    PlusJakartaSans_600SemiBold,
     PlusJakartaSans_700Bold,
   });
 

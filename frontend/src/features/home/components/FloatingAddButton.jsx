@@ -1,0 +1,36 @@
+import { Ionicons } from '@expo/vector-icons';
+import { Pressable, StyleSheet } from 'react-native';
+
+import { theme } from '../../../theme';
+
+export function FloatingAddButton({ onPress }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Create alarm"
+      onPress={onPress}
+      style={({ pressed }) => [styles.button, pressed && styles.pressed]}
+    >
+      <Ionicons name="add" size={42} color={theme.colors.white} />
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  button: {
+    alignItems: 'center',
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.radii.full,
+    bottom: 22,
+    height: 70,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 24,
+    width: 70,
+    ...theme.shadows.glow,
+  },
+  pressed: {
+    opacity: 0.78,
+    transform: [{ scale: 0.95 }],
+  },
+});

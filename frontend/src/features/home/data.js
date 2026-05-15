@@ -1,0 +1,66 @@
+export const shortcuts = [
+  {
+    id: 'ai-alarm',
+    label: 'AI Alarm',
+    icon: 'bulb',
+    iconColor: '#FF6A00',
+    backgroundColor: '#FFF0E8',
+  },
+  {
+    id: 'focus-mode',
+    label: 'Focus Mode',
+    icon: 'timer',
+    iconColor: '#1999FF',
+    backgroundColor: '#EAF5FF',
+  },
+  {
+    id: 'sleep-insights',
+    label: 'Sleep Insights',
+    icon: 'moon',
+    iconColor: '#8B5CF6',
+    backgroundColor: '#F1EAFE',
+  },
+  {
+    id: 'streaks',
+    label: 'Streaks',
+    icon: 'trending-up',
+    iconColor: '#22C55E',
+    backgroundColor: '#EAFBF0',
+  },
+];
+
+export const initialAlarms = [
+  {
+    id: 'morning-scan',
+    time: '06:00',
+    meridiem: 'AM',
+    title: 'Scan Toothbrush',
+    schedule: 'Mon - Tue - Wed - Thu - Fri',
+    icon: 'flashlight',
+    iconColor: '#FF6A00',
+    backgroundColor: '#FFF0E8',
+    active: true,
+  },
+  {
+    id: 'reading',
+    time: '07:30',
+    meridiem: 'AM',
+    title: 'Read 10 Pages',
+    schedule: 'Daily  |  Growth Mode',
+    icon: 'book-outline',
+    iconColor: '#258CFF',
+    backgroundColor: '#EAF5FF',
+    active: true,
+  },
+  {
+    id: 'workout',
+    time: '08:15',
+    meridiem: 'AM',
+    title: 'Morning Workout',
+    schedule: 'Sat - Sun  |  Energy Boost',
+    icon: 'walk',
+    iconColor: '#8B5CF6',
+    backgroundColor: '#F3EAFF',
+    active: false,
+  },
+];
