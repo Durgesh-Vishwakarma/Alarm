@@ -1,9 +1,9 @@
-import { AppState, StyleSheet, Text, View } from 'react-native';
+import { AppState, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 
 import { PermissionCard } from '../components/permissions/PermissionCard';
-import { PrimaryButton } from '../components/ui/PrimaryButton';
 import { Screen } from '../components/ui/Screen';
 import {
   areRequiredPermissionsGranted,
@@ -18,6 +18,9 @@ export default function PermissionsScreen() {
   const [busyKey, setBusyKey] = useState(null);
 
   const allGranted = areRequiredPermissionsGranted(permissions);
+  const enabledCount = permissions.filter((permission) => permission.status === 'granted').length;
+  const totalCount = permissions.length || 5;
+  const progress = totalCount > 0 ? enabledCount / totalCount : 0;
 
   const refresh = useCallback(async () => {
     const result = await refreshAndPersistPermissions();
@@ -62,18 +65,37 @@ export default function PermissionsScreen() {
   return (
     <Screen scroll contentStyle={styles.content}>
       <View style={styles.header}>
-        <Text style={styles.eyebrow}>Enable alarm protection</Text>
-        <Text style={styles.title}>Snapwake needs these permissions to ring reliably.</Text>
+        {/* <View style={styles.heroIcon}>
+          <Ionicons name="shield-checkmark" size={24} color={theme.colors.primary} />
+        </View> */}
+        <Text style={styles.eyebrow}>Alarm protection</Text>
+        <Text style={styles.title}>Set up required permissions</Text>
         <Text style={styles.subtitle}>
-          Required access is checked every launch. If anything is disabled later, we will bring you
-          back here before Home opens.
+          Snapwake checks only the access needed for alarms, full-screen ringing, and photo
+          challenges.
         </Text>
       </View>
 
+      <View style={styles.progressCard}>
+        <View style={styles.progressIcon}>
+          <Ionicons name="shield-outline" size={24} color={theme.colors.primary} />
+        </View>
+        <View style={styles.progressCopy}>
+          <Text style={styles.progressTitle}>
+            {enabledCount} of {totalCount} enabled
+          </Text>
+          <Text style={styles.progressSubtitle}>Required before Home opens</Text>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+          </View>
+        </View>
+      </View>
+
       <View style={styles.list}>
-        {permissions.map((permission) => (
+        {permissions.map((permission, index) => (
           <PermissionCard
             busy={busyKey === permission.key || loading}
+            isLast={index === permissions.length - 1}
             key={permission.key}
             onPress={() => handlePermissionPress(permission)}
             permission={permission}
@@ -81,61 +103,155 @@ export default function PermissionsScreen() {
         ))}
       </View>
 
-      {!allGranted ? (
-        <Text style={styles.helper}>
-          Enable every required item to continue. If Android opens Settings, return to Snapwake after
-          switching it on.
-        </Text>
-      ) : null}
+    
 
-      <PrimaryButton
+      <View style={styles.noteRow}>
+        <Ionicons name="information-circle-outline" size={15} color={theme.colors.textMuted} />
+        <Text style={styles.noteText}>
+          You can change these anytime in device Settings. Snapwake checks access every launch.
+        </Text>
+      </View>
+
+      <Pressable
+        accessibilityRole="button"
         disabled={!allGranted || loading}
-        loading={loading}
         onPress={continueToHome}
-        style={styles.button}
-        title="Continue to Snapwake"
-      />
+        style={({ pressed }) => [
+          styles.button,
+          (!allGranted || loading) && styles.buttonDisabled,
+          pressed && allGranted && styles.pressed,
+        ]}
+      >
+        <Text style={styles.buttonText}>Continue to Snapwake</Text>
+        <Ionicons name="arrow-forward" size={18} color={theme.colors.white} />
+      </Pressable>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   content: {
-    gap: theme.space.lg,
+    gap: 14,
+    paddingTop: theme.space.sm,
   },
   header: {
     paddingTop: theme.space.sm,
+  },
+  heroIcon: {
+    alignItems: 'center',
+    backgroundColor: theme.colors.primarySoft,
+    borderRadius: theme.radii.md,
+    height: 44,
+    justifyContent: 'center',
+    marginBottom: 18,
+    width: 44,
   },
   eyebrow: {
     color: theme.colors.primary,
     fontFamily: theme.fonts.bodyBold,
     fontSize: 10,
-    marginBottom: theme.space.sm,
+    marginBottom: theme.space.xs,
     textTransform: 'uppercase',
   },
   title: {
     color: theme.colors.text,
     fontFamily: theme.fonts.heading,
-    fontSize: 17,
-    lineHeight: 24,
+    fontSize: 20,
+    lineHeight: 26,
   },
   subtitle: {
     color: theme.colors.textMuted,
     fontFamily: theme.fonts.bodyMedium,
     fontSize: 12,
-    lineHeight: 18,
-    marginTop: theme.space.sm,
+    lineHeight: 17,
+    marginTop: theme.space.xs,
   },
-  list: {
-    gap: theme.space.md,
+  progressCard: {
+    alignItems: 'center',
+    backgroundColor: '#FFF7F1',
+    borderColor: '#FFE1CC',
+    borderRadius: theme.radii.lg,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    padding: 14,
   },
-  helper: {
+  progressIcon: {
+    alignItems: 'center',
+    backgroundColor: theme.colors.white,
+    borderRadius: theme.radii.md,
+    height: 44,
+    justifyContent: 'center',
+    width: 44,
+  },
+  progressCopy: {
+    flex: 1,
+  },
+  progressTitle: {
+    color: theme.colors.text,
+    fontFamily: theme.fonts.bodyBold,
+    fontSize: 13,
+  },
+  progressSubtitle: {
     color: theme.colors.textMuted,
     fontFamily: theme.fonts.bodyMedium,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 10,
+    marginTop: 2,
+  },
+  progressTrack: {
+    backgroundColor: '#FFDCC5',
+    borderRadius: theme.radii.full,
+    height: 5,
+    marginTop: 10,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.radii.full,
+    height: '100%',
+  },
+  list: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radii.lg,
+    borderWidth: 1,
+    overflow: 'hidden',
+    ...theme.shadows.soft,
+  },
+  noteRow: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: 7,
+    paddingHorizontal: 4,
+  },
+  noteText: {
+    color: theme.colors.textMuted,
+    flex: 1,
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: 10,
+    lineHeight: 15,
   },
   button: {
-    marginTop: theme.space.sm,
+    alignItems: 'center',
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.radii.lg,
+    flexDirection: 'row',
+    height: 52,
+    justifyContent: 'center',
+    gap: 10,
+    marginTop: 4,
+    ...theme.shadows.glow,
+  },
+  buttonDisabled: {
+    backgroundColor: theme.colors.textLight,
+    shadowOpacity: 0,
+  },
+  buttonText: {
+    color: theme.colors.white,
+    fontFamily: theme.fonts.bodyBold,
+    fontSize: 13,
+  },
+  pressed: {
+    opacity: 0.9,
   },
 });

@@ -4,113 +4,104 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../../theme';
 import { PermissionStatusBadge } from './PermissionStatusBadge';
 
-export function PermissionCard({ permission, busy = false, onPress }) {
+export function PermissionCard({ isLast = false, permission, busy = false, onPress }) {
   const granted = permission.status === 'granted';
 
   return (
-    <View style={styles.card}>
-      <View style={[styles.iconWrap, granted && styles.iconWrapGranted]}>
+    <Pressable
+      accessibilityRole="button"
+      disabled={busy || granted}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.row,
+        !isLast && styles.rowBorder,
+        pressed && !granted && styles.pressed,
+      ]}
+    >
+      <View
+        style={[
+          styles.iconWrap,
+          { backgroundColor: permission.backgroundColor ?? theme.colors.primarySoft },
+        ]}
+      >
         <Ionicons
-          color={granted ? theme.colors.success : theme.colors.primary}
-          name={granted ? 'checkmark' : 'alert-circle-outline'}
-          size={18}
+          color={permission.iconColor ?? theme.colors.primary}
+          name={permission.icon ?? 'shield-checkmark-outline'}
+          size={22}
         />
       </View>
 
       <View style={styles.copy}>
-        <View style={styles.titleRow}>
-          <Text style={styles.title}>{permission.title}</Text>
-          <PermissionStatusBadge status={permission.status} />
-        </View>
-        <Text style={styles.description}>{permission.description}</Text>
+        <Text style={styles.title}>{permission.title}</Text>
+        {permission.description ? (
+          <Text style={styles.description}>{permission.description}</Text>
+        ) : null}
       </View>
 
-      <Pressable
-        accessibilityRole="button"
-        disabled={busy || granted}
-        onPress={onPress}
-        style={({ pressed }) => [
-          styles.action,
-          granted && styles.actionGranted,
-          pressed && !granted && styles.pressed,
-        ]}
-      >
-        <Text style={[styles.actionText, granted && styles.actionTextGranted]}>
-          {granted ? 'Done' : permission.actionLabel ?? 'Enable'}
-        </Text>
-      </Pressable>
-    </View>
+      <View style={styles.trailing}>
+        <PermissionStatusBadge status={permission.status} />
+        {granted ? (
+          <Ionicons name="checkmark-circle" size={21} color="#6BCB4B" />
+        ) : (
+          <View style={styles.actionHint}>
+            <Ionicons name="chevron-forward" size={16} color={theme.colors.primary} />
+          </View>
+        )}
+      </View>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
+  row: {
     alignItems: 'center',
     backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radii.lg,
-    borderWidth: 1,
     flexDirection: 'row',
-    gap: theme.space.md,
-    padding: theme.space.md,
-    shadowColor: theme.colors.shadow,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.05,
-    shadowRadius: 16,
+    gap: 13,
+    minHeight: 78,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  rowBorder: {
+    borderBottomColor: theme.colors.borderSoft,
+    borderBottomWidth: 1,
   },
   iconWrap: {
     alignItems: 'center',
-    backgroundColor: theme.colors.primarySoft,
-    borderRadius: theme.radii.lg,
-    height: 38,
+    borderRadius: 12,
+    height: 46,
     justifyContent: 'center',
-    width: 38,
-  },
-  iconWrapGranted: {
-    backgroundColor: 'rgba(21, 176, 113, 0.1)',
+    width: 46,
   },
   copy: {
     flex: 1,
-    gap: 6,
-  },
-  titleRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: theme.space.sm,
-    justifyContent: 'space-between',
+    minWidth: 0,
   },
   title: {
     color: theme.colors.text,
-    flex: 1,
     fontFamily: theme.fonts.bodyBold,
-    fontSize: 12,
+    fontSize: 13,
   },
   description: {
     color: theme.colors.textMuted,
     fontFamily: theme.fonts.bodyMedium,
-    fontSize: 12,
-    lineHeight: 17,
-  },
-  action: {
-    alignItems: 'center',
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.radii.md,
-    minWidth: 62,
-    paddingHorizontal: theme.space.sm,
-    paddingVertical: 9,
-  },
-  actionGranted: {
-    backgroundColor: theme.colors.surfaceMuted,
-  },
-  actionText: {
-    color: theme.colors.white,
-    fontFamily: theme.fonts.bodyBold,
     fontSize: 11,
+    lineHeight: 15,
+    marginTop: 3,
   },
-  actionTextGranted: {
-    color: theme.colors.textMuted,
+  trailing: {
+    alignItems: 'flex-end',
+    flexDirection: 'row',
+    gap: 7,
+    justifyContent: 'flex-end',
+    minWidth: 98,
+  },
+  actionHint: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 4,
   },
   pressed: {
-    opacity: 0.88,
+    opacity: 0.86,
   },
 });
