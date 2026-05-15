@@ -1,9 +1,1 @@
-export * from './colors';
-export * from './spacing';
-export * from './radii';
-export * from './shadows';
-export * from './gradients';
-export * from './motion';
-export * from './themes';
-export * from './typography';
-export * from './tokens';
+export { colors, fonts, fontSizes, radii, shadows, space, theme } from './tokens';
