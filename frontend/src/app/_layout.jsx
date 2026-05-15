@@ -46,7 +46,20 @@ export default function RootLayout() {
   return (
     <>
       <StatusBar style="dark" backgroundColor={theme.colors.background} />
-      <Stack screenOptions={{ headerShown: false }} />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen
+          name="new-alarm"
+          options={{
+            animation: 'slide_from_right',
+            animationDuration: 180,
+          }}
+        />
+      </Stack>
     </>
   );
 }

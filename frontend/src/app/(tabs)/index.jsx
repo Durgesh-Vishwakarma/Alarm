@@ -1,6 +1,14 @@
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  Alert,
+  Animated,
+  Easing,
+  ScrollView,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { AlarmList, AlarmSectionHeader } from '../../features/home/components/AlarmList';
 import { FloatingAddButton } from '../../features/home/components/FloatingAddButton';
@@ -9,12 +17,81 @@ import { HomeHeader } from '../../features/home/components/HomeHeader';
 import { ShortcutGrid } from '../../features/home/components/ShortcutGrid';
 import { StreakBanner } from '../../features/home/components/StreakBanner';
 import { initialAlarms, shortcuts } from '../../features/home/data';
+import { NewAlarmScreen } from '../../features/newAlarm/NewAlarmScreen';
+import { challenges, initialAlarmDraft, repeatPresets } from '../../features/newAlarm/data';
+import { formatDays, getSelectedChallenge } from '../../features/newAlarm/utils';
 import { theme } from '../../theme';
 
+function parseAlarmTime(time) {
+  const [hour, minute] = time.split(':').map(Number);
+  return { hour, minute };
+}
+
+function resolveRepeat(schedule) {
+  if (schedule.includes('Daily')) {
+    return { days: repeatPresets.Daily, repeatPreset: 'Daily' };
+  }
+
+  if (schedule.includes('Sat') && schedule.includes('Sun') && !schedule.includes('Mon')) {
+    return { days: repeatPresets.Weekend, repeatPreset: 'Weekend' };
+  }
+
+  return { days: repeatPresets.Weekdays, repeatPreset: 'Weekdays' };
+}
+
+function challengeIdFromTitle(title) {
+  return challenges.find((challenge) => challenge.title === title)?.id ?? 'custom-challenge';
+}
+
+function alarmToDraft(alarm) {
+  const { hour, minute } = parseAlarmTime(alarm.time);
+  const repeat = resolveRepeat(alarm.schedule);
+  const challengeId = challengeIdFromTitle(alarm.title);
+
+  return {
+    ...initialAlarmDraft,
+    ...repeat,
+    challengeId,
+    customChallengeTitle:
+      challengeId === 'custom-challenge' ? alarm.title : initialAlarmDraft.customChallengeTitle,
+    hour,
+    label: alarm.label ?? alarm.title,
+    minute,
+    notification: alarm.active,
+    period: alarm.meridiem,
+  };
+}
+
+function draftToAlarm(draft, existingAlarm) {
+  const selectedChallenge = getSelectedChallenge(draft);
+
+  return {
+    ...existingAlarm,
+    active: draft.notification,
+    backgroundColor: selectedChallenge.backgroundColor,
+    icon: selectedChallenge.icon,
+    iconColor: selectedChallenge.iconColor,
+    label: draft.label,
+    meridiem: draft.period,
+    schedule: draft.repeatPreset === 'Daily' ? 'Daily  |  Growth Mode' : formatDays(draft.days),
+    time: `${String(draft.hour).padStart(2, '0')}:${String(draft.minute).padStart(2, '0')}`,
+    title: selectedChallenge.title,
+  };
+}
+
 export default function HomeScreen() {
+  const { width } = useWindowDimensions();
   const [alarms, setAlarms] = useState(initialAlarms);
+  const [editingAlarmId, setEditingAlarmId] = useState(null);
+  const [newAlarmVisible, setNewAlarmVisible] = useState(false);
+  const [newAlarmMounted, setNewAlarmMounted] = useState(false);
+  const newAlarmTranslateX = useRef(new Animated.Value(width)).current;
 
   const activeCount = useMemo(() => alarms.filter((alarm) => alarm.active).length, [alarms]);
+  const editorInitialDraft = useMemo(() => {
+    const editingAlarm = alarms.find((alarm) => alarm.id === editingAlarmId);
+    return editingAlarm ? alarmToDraft(editingAlarm) : initialAlarmDraft;
+  }, [alarms, editingAlarmId]);
 
   const handleToggleAlarm = (alarmId) => {
     setAlarms((currentAlarms) =>
@@ -27,6 +104,63 @@ export default function HomeScreen() {
   const showAction = (title, message) => {
     Alert.alert(title, message);
   };
+
+  const openNewAlarm = () => {
+    setEditingAlarmId(null);
+    setNewAlarmMounted(true);
+    setNewAlarmVisible(true);
+  };
+
+  const openEditAlarm = (alarm) => {
+    setEditingAlarmId(alarm.id);
+    setNewAlarmMounted(true);
+    setNewAlarmVisible(true);
+  };
+
+  const closeNewAlarm = () => {
+    setNewAlarmVisible(false);
+  };
+
+  const saveEditorDraft = (savedDraft) => {
+    if (editingAlarmId) {
+      setAlarms((currentAlarms) =>
+        currentAlarms.map((alarm) =>
+          alarm.id === editingAlarmId ? draftToAlarm(savedDraft, alarm) : alarm,
+        ),
+      );
+    }
+
+    closeNewAlarm();
+  };
+
+  useEffect(() => {
+    const warmTimer = setTimeout(() => {
+      setNewAlarmMounted(true);
+    }, 350);
+
+    return () => clearTimeout(warmTimer);
+  }, []);
+
+  useEffect(() => {
+    if (!newAlarmVisible) {
+      newAlarmTranslateX.setValue(width);
+    }
+  }, [newAlarmTranslateX, newAlarmVisible, width]);
+
+  useEffect(() => {
+    if (!newAlarmMounted) {
+      return undefined;
+    }
+
+    Animated.timing(newAlarmTranslateX, {
+      duration: newAlarmVisible ? 170 : 130,
+      easing: newAlarmVisible ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
+      toValue: newAlarmVisible ? 0 : width,
+      useNativeDriver: true,
+    }).start();
+
+    return undefined;
+  }, [newAlarmMounted, newAlarmTranslateX, newAlarmVisible, width]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -47,16 +181,35 @@ export default function HomeScreen() {
           <AlarmSectionHeader
             activeCount={activeCount}
             totalCount={alarms.length}
-            onAddPress={() => showAction('Add Alarm', 'Add alarm action is ready.')}
+            onAddPress={openNewAlarm}
           />
           <AlarmList
             alarms={alarms}
-            onOpenAlarm={(alarm) => showAction(alarm.time, `${alarm.title} settings are ready.`)}
+            onOpenAlarm={openEditAlarm}
             onToggleAlarm={handleToggleAlarm}
           />
         </ScrollView>
 
-        <FloatingAddButton onPress={() => showAction('Add Alarm', 'Create alarm action is ready.')} />
+        <FloatingAddButton onPress={openNewAlarm} />
+
+        {newAlarmMounted ? (
+          <Animated.View
+            pointerEvents={newAlarmVisible ? 'auto' : 'none'}
+            style={[
+              styles.newAlarmOverlay,
+              {
+                transform: [{ translateX: newAlarmTranslateX }],
+              },
+            ]}
+          >
+            <NewAlarmScreen
+              initialDraft={editorInitialDraft}
+              mode={editingAlarmId ? 'edit' : 'create'}
+              onClose={closeNewAlarm}
+              onSaved={saveEditorDraft}
+            />
+          </Animated.View>
+        ) : null}
       </View>
     </SafeAreaView>
   );
@@ -74,5 +227,11 @@ const styles = StyleSheet.create({
     paddingBottom: 114,
     paddingHorizontal: 22,
     paddingTop: theme.space.md,
+  },
+  newAlarmOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: theme.colors.background,
+    elevation: 20,
+    zIndex: 20,
   },
 });
