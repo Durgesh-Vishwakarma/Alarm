@@ -1,60 +1,74 @@
-import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { ImageBackground, StyleSheet, Text, View } from 'react-native';
 
 import { theme } from '../../theme';
 
-export function OnboardingSlide({ slide }) {
+export function OnboardingSlide({ slide, width }) {
   return (
-    <View style={styles.card}>
-      <View style={styles.iconWrap}>
-        <Ionicons color={theme.colors.primary} name={slide.icon} size={26} />
-      </View>
-      <Text style={styles.eyebrow}>{slide.eyebrow}</Text>
-      <Text style={styles.title}>{slide.title}</Text>
-      <Text style={styles.body}>{slide.body}</Text>
+    <View style={[styles.slide, { width }]}>
+      <ImageBackground
+        resizeMode="cover"
+        source={slide.image}
+        style={styles.image}
+      >
+        <LinearGradient
+          colors={['rgba(5, 12, 26, 0)', 'rgba(5, 12, 26, 0.04)', 'rgba(5, 12, 26, 0.62)']}
+          locations={[0, 0.52, 1]}
+          style={styles.overlay}
+        >
+          <View style={styles.copy}>
+            <View style={styles.eyebrowPill}>
+              <Text style={styles.eyebrow}>{slide.eyebrow}</Text>
+            </View>
+            <Text style={styles.title}>{slide.title}</Text>
+            <Text style={styles.body}>{slide.body}</Text>
+          </View>
+        </LinearGradient>
+      </ImageBackground>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radii.lg,
-    borderWidth: 1,
-    padding: theme.space.xl,
-    shadowColor: theme.colors.shadow,
-    shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
+  slide: {
+    backgroundColor: theme.colors.black,
+    flex: 1,
   },
-  iconWrap: {
-    alignItems: 'center',
-    backgroundColor: theme.colors.primarySoft,
-    borderRadius: theme.radii.lg,
-    height: 54,
-    justifyContent: 'center',
-    marginBottom: theme.space.lg,
-    width: 54,
+  image: {
+    flex: 1,
+  },
+  overlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    paddingBottom: 140,
+    paddingHorizontal: 24,
+  },
+  copy: {
+    gap: 10,
+  },
+  eyebrowPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    borderRadius: theme.radii.full,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
   },
   eyebrow: {
     color: theme.colors.primary,
     fontFamily: theme.fonts.bodyBold,
     fontSize: 10,
-    marginBottom: theme.space.sm,
     textTransform: 'uppercase',
   },
   title: {
-    color: theme.colors.text,
+    color: theme.colors.white,
     fontFamily: theme.fonts.heading,
-    fontSize: 17,
-    lineHeight: 24,
-    marginBottom: theme.space.sm,
+    fontSize: 27,
+    lineHeight: 34,
   },
   body: {
-    color: theme.colors.textMuted,
+    color: 'rgba(255, 255, 255, 0.94)',
     fontFamily: theme.fonts.bodyMedium,
     fontSize: 12,
-    lineHeight: 19,
+    lineHeight: 18,
   },
 });

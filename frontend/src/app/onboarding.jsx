@@ -1,18 +1,18 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import { OnboardingDots } from '../components/onboarding/OnboardingDots';
 import { OnboardingSlide } from '../components/onboarding/OnboardingSlide';
 import { PrimaryButton } from '../components/ui/PrimaryButton';
-import { Screen } from '../components/ui/Screen';
 import { onboardingSlides } from '../data/onboardingSlides';
 import { setOnboardingCompleted } from '../services/appStorage';
 import { theme } from '../theme';
 
 export default function OnboardingScreen() {
+  const { width } = useWindowDimensions();
+  const pagerRef = useRef(null);
   const [index, setIndex] = useState(0);
-  const activeSlide = onboardingSlides[index];
   const finalSlide = index === onboardingSlides.length - 1;
 
   const completeOnboarding = async () => {
@@ -26,54 +26,49 @@ export default function OnboardingScreen() {
       return;
     }
 
-    setIndex((current) => current + 1);
+    const nextIndex = index + 1;
+    pagerRef.current?.scrollTo({ x: nextIndex * width, animated: true });
+    setIndex(nextIndex);
+  };
+
+  const handleMomentumEnd = (event) => {
+    const nextIndex = Math.round(event.nativeEvent.contentOffset.x / width);
+    setIndex(nextIndex);
   };
 
   return (
-    <Screen contentStyle={styles.content}>
-      <View style={styles.topBar}>
-        <Text style={styles.brand}>Snapwake</Text>
-        <Pressable accessibilityRole="button" onPress={completeOnboarding} hitSlop={12}>
-          <Text style={styles.skip}>Skip</Text>
-        </Pressable>
-      </View>
-
-      <View style={styles.middle}>
-        <OnboardingSlide slide={activeSlide} />
-      </View>
+    <View style={styles.screen}>
+      <ScrollView
+        horizontal
+        onMomentumScrollEnd={handleMomentumEnd}
+        pagingEnabled
+        ref={pagerRef}
+        scrollEventThrottle={16}
+        showsHorizontalScrollIndicator={false}
+      >
+        {onboardingSlides.map((slide) => (
+          <OnboardingSlide key={slide.title} slide={slide} width={width} />
+        ))}
+      </ScrollView>
 
       <View style={styles.footer}>
         <OnboardingDots activeIndex={index} count={onboardingSlides.length} />
         <PrimaryButton title={finalSlide ? 'Continue' : 'Next'} onPress={goNext} />
       </View>
-    </Screen>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  content: {
-    justifyContent: 'space-between',
-  },
-  topBar: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  brand: {
-    color: theme.colors.text,
-    fontFamily: theme.fonts.heading,
-    fontSize: 17,
-  },
-  skip: {
-    color: theme.colors.textMuted,
-    fontFamily: theme.fonts.bodyBold,
-    fontSize: 12,
-  },
-  middle: {
-    justifyContent: 'center',
+  screen: {
+    backgroundColor: theme.colors.black,
+    flex: 1,
   },
   footer: {
-    gap: theme.space.xl,
-    paddingBottom: theme.space.lg,
+    bottom: 34,
+    gap: theme.space.lg,
+    left: 24,
+    position: 'absolute',
+    right: 24,
   },
 });
