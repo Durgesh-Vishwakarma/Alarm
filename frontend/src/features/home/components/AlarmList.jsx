@@ -126,6 +126,18 @@ function AlarmRow({ alarm, onDeleteAlarm, onOpenAlarm, onToggleAlarm }) {
 }
 
 export function AlarmList({ alarms, onDeleteAlarm, onToggleAlarm, onOpenAlarm }) {
+  if (alarms.length === 0) {
+    return (
+      <View style={styles.emptyCard}>
+        <Ionicons name="alarm-outline" size={22} color={theme.colors.primary} />
+        <View style={styles.emptyCopy}>
+          <Text style={styles.emptyTitle}>No alarms yet</Text>
+          <Text style={styles.emptyText}>Create your first Snapwake alarm to see it here.</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.list}>
       {alarms.map((alarm) => (
@@ -179,6 +191,33 @@ const styles = StyleSheet.create({
   list: {
     gap: theme.space.md,
     paddingTop: theme.space.md,
+  },
+  emptyCard: {
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radii.lg,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: theme.space.md,
+    marginTop: theme.space.md,
+    padding: theme.space.lg,
+    ...theme.shadows.soft,
+  },
+  emptyCopy: {
+    flex: 1,
+  },
+  emptyTitle: {
+    color: theme.colors.text,
+    fontFamily: theme.fonts.bodyBold,
+    fontSize: 12,
+  },
+  emptyText: {
+    color: theme.colors.textMuted,
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 2,
   },
   swipeWrap: {
     borderRadius: theme.radii.lg,

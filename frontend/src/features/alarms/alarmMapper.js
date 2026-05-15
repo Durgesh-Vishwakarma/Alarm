@@ -40,7 +40,7 @@ export function draftToPersistedAlarm(draft, existingAlarm = {}) {
 }
 
 export function persistedAlarmToHomeAlarm(alarm) {
-  const challenge = challengeVisual(alarm.challengeId);
+  const challenge = challengeVisual(alarm);
 
   return {
     id: alarm.id,
@@ -50,6 +50,7 @@ export function persistedAlarmToHomeAlarm(alarm) {
     iconColor: challenge.iconColor,
     label: alarm.label,
     meridiem: alarm.period,
+    nextTriggerAt: alarm.nextTriggerAt,
     schedule:
       alarm.repeatPreset === 'Daily' ? 'Daily  |  Growth Mode' : formatDays(alarm.repeatDays),
     time: alarm.time,
@@ -57,8 +58,12 @@ export function persistedAlarmToHomeAlarm(alarm) {
   };
 }
 
-function challengeVisual(challengeId) {
-  return challenges.find((challenge) => challenge.id === challengeId) ?? challenges[0];
+function challengeVisual(alarm) {
+  return (
+    challenges.find((challenge) => challenge.id === alarm.challengeId) ??
+    challenges.find((challenge) => challenge.title === alarm.challengeTitle) ??
+    challenges[0]
+  );
 }
 
 function ringtoneId(sound) {

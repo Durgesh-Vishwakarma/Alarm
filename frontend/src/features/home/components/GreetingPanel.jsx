@@ -30,14 +30,14 @@ const styles = StyleSheet.create({
   eyebrow: {
     color: theme.colors.primary,
     fontFamily: theme.fonts.bodyBold,
-    fontSize: 10,
+    fontSize: theme.fontSizes.xl,
     marginBottom: theme.space.xs,
     textTransform: 'uppercase',
   },
   title: {
     color: theme.colors.text,
     fontFamily: theme.fonts.heading,
-    fontSize: 17,
+    fontSize: theme.fontSizes.lg,
     lineHeight: 23,
   },
   subtitle: {

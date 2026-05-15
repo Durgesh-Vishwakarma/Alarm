@@ -1,54 +1,61 @@
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { theme } from '../../../theme';
 
-export function NextAlarmBanner({
-  time = '06:00',
-  period = 'AM',
-  remaining = 'Rings in 7h 12m',
-  challenge = 'Scan Toothbrush',
-  sound = 'Loud alarm',
-}) {
+export function NextAlarmBanner({ alarm, onPress }) {
+  const hasAlarm = Boolean(alarm);
+
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="View next alarm"
-      onPress={() =>
-        Alert.alert(
-          'Next Alarm',
-          `${time} ${period}\n${remaining}\nVerification: ${challenge}`
-        )
-      }
-      style={({ pressed }) => [styles.wrap, pressed && styles.pressed]}
+      accessibilityLabel={hasAlarm ? `Open next alarm at ${alarm.timeLabel}` : 'No active alarm'}
+      onPress={hasAlarm ? onPress : undefined}
+      style={({ pressed }) => [styles.wrap, pressed && hasAlarm && styles.pressed]}
     >
-      <LinearGradient
-        colors={['#FF7A18', '#FF9432', '#FFB13B']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.banner}
-      >
+      <View style={[styles.banner, hasAlarm ? styles.activeBanner : styles.emptyBanner]}>
+        {hasAlarm ? <View pointerEvents="none" style={styles.highlight} /> : null}
+
         <View style={styles.headerRow}>
-          <View style={styles.labelPill}>
-            <Ionicons name="alarm-outline" size={13} color="#FF7A18" />
-            <Text style={styles.labelText}>NEXT WAKE-UP</Text>
+          <View style={[styles.labelPill, !hasAlarm && styles.emptyPill]}>
+            <Ionicons
+              name={hasAlarm ? 'alarm-outline' : 'alarm-outline'}
+              size={13}
+              color={theme.colors.primary}
+            />
+            <Text style={styles.labelText}>{hasAlarm ? 'NEXT WAKE-UP' : 'NO ACTIVE ALARM'}</Text>
           </View>
 
-          <Text style={styles.remaining}>{remaining}</Text>
+          <Text style={[styles.remaining, !hasAlarm && styles.emptyText]}>
+            {hasAlarm ? alarm.remaining : 'Stay on Home'}
+          </Text>
         </View>
 
-        <View style={styles.timeRow}>
-          <Text style={styles.time}>{time}</Text>
-          <Text style={styles.period}>{period}</Text>
-        </View>
+        {hasAlarm ? (
+          <>
+            <View style={styles.timeRow}>
+              <Text style={styles.time}>{alarm.time}</Text>
+              <Text style={styles.period}>{alarm.period}</Text>
+            </View>
 
-        <Text style={styles.helperText}>
-          Alarm stops only after successful photo verification.
-        </Text>
-
-        
-      </LinearGradient>
+            <View style={styles.detailRow}>
+              <View style={styles.challengeIcon}>
+                <Ionicons name={alarm.icon} size={17} color={alarm.iconColor} />
+              </View>
+              <View style={styles.detailCopy}>
+                <Text numberOfLines={1} style={styles.challenge}>
+                  {alarm.challengeTitle}
+                </Text>
+                <Text numberOfLines={1} style={styles.schedule}>
+                  {alarm.detailText}
+                </Text>
+              </View>
+            </View>
+          </>
+        ) : (
+          <Text style={styles.emptyTitle}>Turn on an alarm to see the next wake-up here.</Text>
+        )}
+      </View>
     </Pressable>
   );
 }
@@ -63,8 +70,32 @@ const styles = StyleSheet.create({
   },
   banner: {
     borderRadius: theme.radii.lg,
+    minHeight: 160,
     overflow: 'hidden',
     padding: theme.space.lg,
+  },
+  activeBanner: {
+    backgroundColor: theme.colors.primary,
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.24,
+    shadowRadius: 24,
+  },
+  highlight: {
+    backgroundColor: 'rgba(255, 190, 80, 0.58)',
+    borderRadius: 120,
+    height: 150,
+    position: 'absolute',
+    right: -42,
+    top: -45,
+    width: 190,
+  },
+  emptyBanner: {
+     backgroundColor: theme.colors.primary,
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.24,
+    shadowRadius: 24,
   },
   headerRow: {
     alignItems: 'center',
@@ -73,24 +104,28 @@ const styles = StyleSheet.create({
   },
   labelPill: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.white,
     borderRadius: theme.radii.full,
     flexDirection: 'row',
     gap: 6,
     paddingHorizontal: 10,
     paddingVertical: 7,
   },
+  emptyPill: {
+    backgroundColor: theme.colors.primarySoft,
+  },
   labelText: {
-    color: '#FF7A18',
+    color: theme.colors.primary,
     fontFamily: theme.fonts.bodyBold,
     fontSize: 10,
-    letterSpacing: 0.6,
   },
   remaining: {
-    color: '#FFFFFF',
+    color: theme.colors.white,
     fontFamily: theme.fonts.bodyBold,
     fontSize: 12,
-    opacity: 0.95,
+  },
+  emptyText: {
+    color: theme.colors.white,
   },
   timeRow: {
     alignItems: 'flex-end',
@@ -98,63 +133,53 @@ const styles = StyleSheet.create({
     marginTop: theme.space.lg,
   },
   time: {
-    color: '#FFFFFF',
+    color: theme.colors.white,
     fontFamily: theme.fonts.bodyBold,
-    fontSize: 44,
-    letterSpacing: -1.5,
-    lineHeight: 50,
+    fontSize: 40,
+    lineHeight: 46,
   },
   period: {
-    color: '#FFFFFF',
+    color: theme.colors.white,
     fontFamily: theme.fonts.bodyBold,
-    fontSize: 15,
-    marginBottom: 8,
+    fontSize: 14,
+    marginBottom: 7,
     marginLeft: 6,
   },
-  helperText: {
-    color: '#FFFFFF',
-    fontFamily: theme.fonts.bodyMedium,
-    fontSize: 12,
-    lineHeight: 17,
-    marginTop: 4,
-    opacity: 0.9,
-  },
-  bottomRow: {
+  detailRow: {
+    alignItems: 'center',
     flexDirection: 'row',
-    gap: 9,
+    gap: theme.space.sm,
     marginTop: theme.space.md,
   },
-  infoCard: {
+  challengeIcon: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.white,
     borderRadius: theme.radii.md,
-    flex: 1,
-    flexDirection: 'row',
-    gap: 8,
-    minWidth: 0,
-    padding: 10,
-  },
-  infoIcon: {
-    alignItems: 'center',
-    backgroundColor: '#FFF0E8',
-    borderRadius: theme.radii.full,
-    height: 34,
+    height: 38,
     justifyContent: 'center',
-    width: 34,
+    width: 38,
   },
-  infoCopy: {
+  detailCopy: {
     flex: 1,
     minWidth: 0,
   },
-  infoLabel: {
-    color: '#8A8A8A',
-    fontFamily: theme.fonts.bodyMedium,
-    fontSize: 10,
-  },
-  infoValue: {
-    color: '#1F1F1F',
+  challenge: {
+    color: theme.colors.white,
     fontFamily: theme.fonts.bodyBold,
     fontSize: 12,
+  },
+  schedule: {
+    color: theme.colors.white,
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: 11,
     marginTop: 2,
+    opacity: 0.88,
+  },
+  emptyTitle: {
+    color:theme.colors.white,
+    fontFamily: theme.fonts.heading,
+    fontSize: 17,
+    lineHeight: 23,
+    marginTop: theme.space.lg,
   },
 });

@@ -24,6 +24,8 @@ import {
   saveAlarmDraft,
   setAlarmEnabled,
 } from '../../features/alarms/alarmStore';
+import { saveAlarms } from '../../features/alarms/alarmRepository';
+import { calculateNextTriggerAt } from '../../features/alarms/alarmTime';
 import { theme } from '../../theme';
 
 
@@ -91,6 +93,92 @@ function alarmToDraft(alarm) {
 const fallbackPersistedAlarms = initialAlarms.map((alarm) =>
   draftToPersistedAlarm(alarmToDraft(alarm), { id: alarm.id }),
 );
+const fallbackAlarmById = new Map(initialAlarms.map((alarm) => [alarm.id, alarm]));
+
+function getDisplayTriggerAt(alarm, now) {
+  if (alarm.nextTriggerAt && alarm.nextTriggerAt > now) {
+    return alarm.nextTriggerAt;
+  }
+
+  return calculateNextTriggerAt({
+    hour: alarm.hour,
+    minute: alarm.minute,
+    period: alarm.period,
+    repeatDays: alarm.repeatDays,
+  });
+}
+
+function formatRemaining(triggerAt, now) {
+  const diff = Math.max(0, triggerAt - now);
+  const totalSeconds = Math.ceil(diff / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (days > 0) {
+    return `in ${days}d ${hours}h`;
+  }
+
+  if (hours > 0) {
+    return `in ${hours}h ${minutes}m`;
+  }
+
+  if (minutes > 0) {
+    return `in ${minutes}m ${seconds}s`;
+  }
+
+  return seconds > 0 ? `in ${seconds}s` : 'ringing now';
+}
+
+function getChallengeVisual(alarm) {
+  return (
+    challenges.find((challenge) => challenge.id === alarm.challengeId) ??
+    challenges.find((challenge) => challenge.title === alarm.challengeTitle) ??
+    challenges[0]
+  );
+}
+
+function getChallengeIdFromTitle(title) {
+  return challenges.find((challenge) => challenge.title === title)?.id;
+}
+
+function normalizeLegacyAlarm(alarm) {
+  const fallbackAlarm = fallbackAlarmById.get(alarm.id);
+
+  if (!fallbackAlarm || fallbackAlarm.title === 'Scan Toothbrush') {
+    return alarm;
+  }
+
+  const expectedChallengeId = getChallengeIdFromTitle(fallbackAlarm.title);
+  const shouldRepair =
+    alarm.challengeTitle === 'Scan Toothbrush' ||
+    alarm.challengeId === 'custom-challenge' ||
+    alarm.challengeId === 'scan-toothbrush';
+
+  if (!expectedChallengeId || !shouldRepair) {
+    return alarm;
+  }
+
+  return {
+    ...alarm,
+    challengeId: expectedChallengeId,
+    challengeTitle: fallbackAlarm.title,
+    customChallengeTitle: fallbackAlarm.title,
+    label: alarm.label === 'Scan Toothbrush' ? fallbackAlarm.title : alarm.label,
+  };
+}
+
+function normalizeLegacyAlarms(loadedAlarms) {
+  return loadedAlarms.map(normalizeLegacyAlarm);
+}
+
+function getNextAlarm(alarms, now) {
+  return alarms
+    .filter((alarm) => alarm.isActive)
+    .map((alarm) => ({ ...alarm, displayTriggerAt: getDisplayTriggerAt(alarm, now) }))
+    .sort((first, second) => first.displayTriggerAt - second.displayTriggerAt)[0] ?? null;
+}
 
 export default function HomeScreen() {
   const { width } = useWindowDimensions();
@@ -98,10 +186,34 @@ export default function HomeScreen() {
   const [editingAlarmId, setEditingAlarmId] = useState(null);
   const [newAlarmVisible, setNewAlarmVisible] = useState(false);
   const [newAlarmMounted, setNewAlarmMounted] = useState(false);
+  const [now, setNow] = useState(Date.now());
   const newAlarmTranslateX = useRef(new Animated.Value(width)).current;
 
   const homeAlarms = useMemo(() => alarms.map(persistedAlarmToHomeAlarm), [alarms]);
   const activeCount = useMemo(() => alarms.filter((alarm) => alarm.isActive).length, [alarms]);
+  const nextAlarm = useMemo(() => getNextAlarm(alarms, now), [alarms, now]);
+  const nextAlarmBanner = useMemo(() => {
+    if (!nextAlarm) {
+      return null;
+    }
+
+    const challenge = getChallengeVisual(nextAlarm);
+    const schedule =
+      nextAlarm.repeatPreset === 'Daily'
+        ? 'Daily  |  Growth Mode'
+        : nextAlarm.repeatDays.join(' - ');
+
+    return {
+      ...nextAlarm,
+      challengeTitle: nextAlarm.challengeTitle,
+      detailText: `${nextAlarm.challengeTitle}  |  ${schedule}`,
+      icon: challenge.icon,
+      iconColor: challenge.iconColor,
+      period: nextAlarm.period,
+      remaining: formatRemaining(nextAlarm.displayTriggerAt, now),
+      schedule,
+    };
+  }, [nextAlarm, now]);
   const editorInitialDraft = useMemo(() => {
     const editingAlarm = alarms.find((alarm) => alarm.id === editingAlarmId);
     return editingAlarm ? alarmToDraft(editingAlarm) : initialAlarmDraft;
@@ -176,6 +288,14 @@ export default function HomeScreen() {
   };
 
   useEffect(() => {
+    const intervalId = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+
+    return () => clearInterval(intervalId);
+  }, []);
+
+  useEffect(() => {
     const warmTimer = setTimeout(() => {
       setNewAlarmMounted(true);
     }, 350);
@@ -189,7 +309,12 @@ export default function HomeScreen() {
     loadAlarmState(fallbackPersistedAlarms)
       .then((loadedAlarms) => {
         if (mounted) {
-          setAlarms(loadedAlarms);
+          const normalizedAlarms = normalizeLegacyAlarms(loadedAlarms);
+          setAlarms(normalizedAlarms);
+
+          if (JSON.stringify(normalizedAlarms) !== JSON.stringify(loadedAlarms)) {
+            saveAlarms(normalizedAlarms).catch(() => {});
+          }
         }
       })
       .catch((error) => {
@@ -234,9 +359,12 @@ export default function HomeScreen() {
             onProfilePress={() => showAction('Profile', 'Profile action is ready.')}
           />
           <NextAlarmBanner
-          time="06:00 AM"
-          remaining="in 7h 12m"
-          challenge="Scan Toothbrush"
+            alarm={nextAlarmBanner}
+            onPress={() => {
+              if (nextAlarmBanner) {
+                openEditAlarm(nextAlarm);
+              }
+            }}
           />
           
           <AlarmSectionHeader
