@@ -52,6 +52,8 @@ function challengeIdFromTitle(title) {
 
 function alarmToDraft(alarm) {
   if ('isActive' in alarm) {
+    const parsedTime = parseAlarmTime(alarm.time ?? initialAlarmDraft.time ?? '06:00');
+
     return {
       ...initialAlarmDraft,
       challengeId: alarm.challengeId,
@@ -59,9 +61,9 @@ function alarmToDraft(alarm) {
         alarm.customChallengeDescription ?? initialAlarmDraft.customChallengeDescription,
       customChallengeTitle: alarm.customChallengeTitle ?? initialAlarmDraft.customChallengeTitle,
       days: alarm.repeatDays,
-      hour: alarm.hour,
+      hour: Number.isFinite(alarm.hour) ? alarm.hour : parsedTime.hour,
       label: alarm.label,
-      minute: alarm.minute,
+      minute: Number.isFinite(alarm.minute) ? alarm.minute : parsedTime.minute,
       notification: alarm.isActive,
       period: alarm.period,
       repeatPreset: alarm.repeatPreset,
@@ -208,7 +210,7 @@ export default function HomeScreen() {
     return {
       ...nextAlarm,
       challengeTitle: nextAlarm.challengeTitle,
-      detailText: `${nextAlarm.challengeTitle}  |  ${schedule}`,
+      detailText: schedule,
       icon: challenge.icon,
       iconColor: challenge.iconColor,
       period: nextAlarm.period,

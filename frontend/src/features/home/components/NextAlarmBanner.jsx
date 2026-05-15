@@ -27,7 +27,7 @@ export function NextAlarmBanner({ alarm, onPress }) {
           </View>
 
           <Text style={[styles.remaining, !hasAlarm && styles.emptyText]}>
-            {hasAlarm ? alarm.remaining : 'Stay on Home'}
+            {hasAlarm ? alarm.remaining : 'No wake-up scheduled'}
           </Text>
         </View>
 

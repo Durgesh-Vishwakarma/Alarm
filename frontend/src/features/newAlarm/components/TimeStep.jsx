@@ -69,6 +69,7 @@ function WheelColumn({
     const nextIndex = WHEEL_CENTER_BLOCK * values.length + selectedIndex;
     visualValueRef.current = value;
     setVisualRawIndex(nextIndex);
+    scrollToIndex(nextIndex);
   }, [selectedIndex, value, values.length]);
 
   const updateVisualFromOffset = (offsetY) => {
