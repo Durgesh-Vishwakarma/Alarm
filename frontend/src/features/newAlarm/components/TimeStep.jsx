@@ -1,10 +1,8 @@
-import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { theme } from '../../../theme';
-import { SectionTitle, SettingRow } from './FormPrimitives';
 
 const WHEEL_ITEM_HEIGHT = 50;
 const WHEEL_VISIBLE_ITEMS = 5;
@@ -308,20 +306,12 @@ function PeriodWheel({ onInteractionEnd, onInteractionStart, period, updateDraft
 
 export function TimeStep({
   draft,
-  goToStep,
   onWheelInteractionEnd,
   onWheelInteractionStart,
-  selectedChallenge,
   updateDraft,
 }) {
-  const setPeriod = (period) => {
-    updateDraft({ period });
-  };
-
   return (
     <View>
-      <SectionTitle title="What time do you want to wake up?" />
-
       <View style={styles.picker}>
         <View pointerEvents="none" style={styles.selectionWindow} />
         <View style={styles.wheelRow}>
@@ -365,36 +355,6 @@ export function TimeStep({
           style={styles.bottomFade}
         />
       </View>
-
-      <View style={styles.segmented}>
-        <Pressable
-          onPress={() => setPeriod('AM')}
-          style={[styles.segment, draft.period === 'AM' && styles.segmentActive]}
-        >
-          <Ionicons name="sunny" size={20} color={draft.period === 'AM' ? theme.colors.primary : theme.colors.textLight} />
-          <Text style={[styles.segmentLabel, draft.period === 'AM' && styles.segmentLabelActive]}>Morning</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setPeriod('PM')}
-          style={[styles.segment, draft.period === 'PM' && styles.segmentActive]}
-        >
-          <Ionicons name="moon" size={20} color={draft.period === 'PM' ? theme.colors.primary : theme.colors.textLight} />
-          <Text style={[styles.segmentLabel, draft.period === 'PM' && styles.segmentLabelActive]}>Evening</Text>
-        </Pressable>
-      </View>
-
-      <Text style={styles.nextTitle}>Next up</Text>
-      <View style={styles.nextCard}>
-        <SettingRow icon="calendar" label="Repeat" value={draft.repeatPreset} onPress={() => goToStep(1)} />
-        <SettingRow icon="star" label="Challenge" value={selectedChallenge.title} onPress={() => goToStep(2)} />
-        <SettingRow icon="settings-outline" label="Settings" value="Sound, Snooze, More" onPress={() => goToStep(3)} />
-      </View>
-
-      <LinearGradient colors={['#FFF7EB', '#FFE4C7']} style={styles.sunrise}>
-        <View style={styles.sun} />
-        <View style={[styles.hill, styles.hillLeft]} />
-        <View style={[styles.hill, styles.hillRight]} />
-      </LinearGradient>
     </View>
   );
 }
@@ -404,13 +364,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: theme.colors.surface,
     borderColor: theme.colors.border,
-    borderRadius: theme.radii.lg,
+    borderRadius: theme.radii.xl,
     borderWidth: 1,
     height: WHEEL_ITEM_HEIGHT * WHEEL_VISIBLE_ITEMS,
     justifyContent: 'center',
-    marginBottom: theme.space.xl,
+    marginBottom: 0,
     overflow: 'hidden',
-    paddingHorizontal: theme.space.md,
+    paddingHorizontal: theme.space.sm,
     ...theme.shadows.soft,
   },
   wheelRow: {
@@ -422,13 +382,13 @@ const styles = StyleSheet.create({
   },
   selectionWindow: {
     backgroundColor: theme.colors.primarySoft,
-    borderColor: 'rgba(255, 106, 0, 0.08)',
+    borderColor: 'rgba(255, 106, 0, 0.12)',
     borderWidth: 1,
     borderRadius: theme.radii.md,
     height: WHEEL_ITEM_HEIGHT,
-    left: theme.space.md,
+    left: theme.space.sm,
     position: 'absolute',
-    right: theme.space.md,
+    right: theme.space.sm,
     top: WHEEL_ITEM_HEIGHT * 2,
   },
   colon: {
@@ -454,14 +414,14 @@ const styles = StyleSheet.create({
   wheelText: {
     color: theme.colors.textLight,
     fontFamily: theme.fonts.bodySemiBold,
-    fontSize: 27,
+    fontSize: 23,
     lineHeight: WHEEL_ITEM_HEIGHT,
     textAlign: 'center',
   },
   wheelTextActive: {
     color: theme.colors.primary,
     fontFamily: theme.fonts.headingSemiBold,
-    fontSize: 31,
+    fontSize: 30,
   },
   periodWheel: {
     height: WHEEL_ITEM_HEIGHT * WHEEL_VISIBLE_ITEMS,
@@ -483,7 +443,7 @@ const styles = StyleSheet.create({
   periodTextActive: {
     color: theme.colors.primary,
     fontFamily: theme.fonts.headingSemiBold,
-    fontSize: 20,
+    fontSize: 18,
   },
   pressedOption: {
     opacity: 0.7,
@@ -501,81 +461,5 @@ const styles = StyleSheet.create({
     left: 0,
     position: 'absolute',
     right: 0,
-  },
-  segmented: {
-    backgroundColor: theme.colors.background,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radii.full,
-    borderWidth: 1,
-    flexDirection: 'row',
-    height: 54,
-    marginBottom: theme.space.xxl,
-    padding: 3,
-  },
-  segment: {
-    alignItems: 'center',
-    borderRadius: theme.radii.full,
-    flex: 1,
-    flexDirection: 'row',
-    gap: theme.space.sm,
-    justifyContent: 'center',
-  },
-  segmentActive: {
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.borderSoft,
-    borderWidth: 1,
-    ...theme.shadows.soft,
-  },
-  segmentLabel: {
-    color: theme.colors.textMuted,
-    fontFamily: theme.fonts.bodyBold,
-    fontSize: theme.fontSizes.sm,
-  },
-  segmentLabelActive: {
-    color: theme.colors.primary,
-  },
-  nextTitle: {
-    color: theme.colors.text,
-    fontFamily: theme.fonts.heading,
-    fontSize: theme.fontSizes.md,
-    marginBottom: theme.space.md,
-  },
-  nextCard: {
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radii.lg,
-    borderWidth: 1,
-    overflow: 'hidden',
-    ...theme.shadows.soft,
-  },
-  sunrise: {
-    height: 150,
-    marginHorizontal: -22,
-    marginTop: theme.space.lg,
-    overflow: 'hidden',
-  },
-  sun: {
-    backgroundColor: '#FF9E2C',
-    borderRadius: theme.radii.full,
-    bottom: 18,
-    height: 86,
-    left: '50%',
-    marginLeft: -43,
-    position: 'absolute',
-    width: 86,
-  },
-  hill: {
-    backgroundColor: 'rgba(37, 109, 90, 0.42)',
-    borderRadius: 120,
-    bottom: -72,
-    height: 120,
-    position: 'absolute',
-    width: 220,
-  },
-  hillLeft: {
-    left: -48,
-  },
-  hillRight: {
-    right: -56,
   },
 });

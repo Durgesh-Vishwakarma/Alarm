@@ -13,38 +13,59 @@ export const repeatPresets = {
   Daily: dayOptions,
 };
 
+export const ringtoneOptions = [
+  {
+    id: 'ringtone',
+    label: 'Bright Morning',
+    nativeId: 'ringtone',
+  },
+  {
+    id: 'cincin',
+    label: 'Soft Chime',
+    nativeId: 'cincin',
+  },
+  {
+    id: 'iphone',
+    label: 'Classic Ring',
+    nativeId: 'iphone',
+  },
+];
+
 export const challenges = [
   {
-    id: 'scan-toothbrush',
-    title: 'Scan Toothbrush',
-    description: 'Scan your toothbrush to start your day fresh',
-    icon: 'flashlight',
-    iconColor: '#FF5A00',
-    backgroundColor: '#FFF0E8',
+    id: "scan-toothbrush",
+    title: "Scan Toothbrush",
+    description: "Take a photo of your toothbrush to prove you are awake",
+    icon: "flashlight",
+    iconColor: "#FF5A00",
+    backgroundColor: "#FFF0E8",
   },
+
   {
-    id: 'read-pages',
-    title: 'Read 10 Pages',
-    description: 'Read 10 pages from any book to wake up mindfully',
-    icon: 'book-outline',
-    iconColor: '#258CFF',
-    backgroundColor: '#EAF5FF',
+    id: "drink-water",
+    title: "Drink Water",
+    description: "Take a photo of a glass or bottle of water",
+    icon: "water-outline",
+    iconColor: "#22C55E",
+    backgroundColor: "#EAFBF0",
   },
+
   {
-    id: 'morning-workout',
-    title: 'Morning Workout',
-    description: 'Do a quick workout to boost your energy',
-    icon: 'walk',
-    iconColor: '#8B5CF6',
-    backgroundColor: '#F3EAFF',
+    id: "scan-bathroom-mirror",
+    title: "Bathroom Mirror",
+    description: "Take a selfie in your bathroom mirror",
+    icon: "camera-outline",
+    iconColor: "#3B82F6",
+    backgroundColor: "#EEF4FF",
   },
+
   {
-    id: 'custom-challenge',
-    title: 'Custom Challenge',
-    description: 'Create your own personal challenge',
-    icon: 'sparkles',
-    iconColor: '#FF6A00',
-    backgroundColor: '#FFF0E8',
+    id: "scan-sunlight",
+    title: "Morning Sunlight",
+    description: "Capture natural morning light near a window",
+    icon: "sunny-outline",
+    iconColor: "#F59E0B",
+    backgroundColor: "#FFF7E6",
   },
 ];
 
@@ -59,7 +80,7 @@ export const initialAlarmDraft = {
   customChallengeDescription: 'Write what you must complete to stop the alarm',
   label: 'Morning Routine',
   snooze: 10,
-  sound: 'Bright Morning',
+  sound: ringtoneOptions[0].label,
   vibration: true,
   notification: true,
   smartWake: true,

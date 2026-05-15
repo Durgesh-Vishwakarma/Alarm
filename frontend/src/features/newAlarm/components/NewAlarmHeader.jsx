@@ -33,27 +33,27 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     flexDirection: 'row',
-    height: 56,
+    height: 52,
     justifyContent: 'space-between',
   },
   iconButton: {
     alignItems: 'center',
-    height: 44,
+    height: 40,
     justifyContent: 'center',
-    width: 44,
+    width: 40,
   },
   title: {
     color: theme.colors.text,
     fontFamily: theme.fonts.heading,
-    fontSize: 20,
+    fontSize: 17,
   },
   saveButton: {
     alignItems: 'center',
     backgroundColor: theme.colors.primary,
     borderRadius: theme.radii.full,
-    height: 40,
+    height: 38,
     justifyContent: 'center',
-    width: 40,
+    width: 38,
     ...theme.shadows.glow,
   },
   pressed: {

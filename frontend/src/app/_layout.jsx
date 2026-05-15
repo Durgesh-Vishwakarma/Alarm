@@ -51,6 +51,9 @@ export default function RootLayout() {
           headerShown: false,
         }}
       >
+        <Stack.Screen name="index" />
+        <Stack.Screen name="onboarding" />
+        <Stack.Screen name="permissions" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
           name="new-alarm"
@@ -59,6 +62,7 @@ export default function RootLayout() {
             animationDuration: 180,
           }}
         />
+        <Stack.Screen name="alarm-alert" />
       </Stack>
     </>
   );

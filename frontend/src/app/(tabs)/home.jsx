@@ -13,14 +13,19 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlarmList, AlarmSectionHeader } from '../../features/home/components/AlarmList';
 import { FloatingAddButton } from '../../features/home/components/FloatingAddButton';
 import { GreetingPanel } from '../../features/home/components/GreetingPanel';
-import { HomeHeader } from '../../features/home/components/HomeHeader';
-import { ShortcutGrid } from '../../features/home/components/ShortcutGrid';
-import { StreakBanner } from '../../features/home/components/StreakBanner';
-import { initialAlarms, shortcuts } from '../../features/home/data';
+import { NextAlarmBanner } from '../../features/home/components/NextAlarmBanner';
+import { initialAlarms } from '../../features/home/data';
 import { NewAlarmScreen } from '../../features/newAlarm/NewAlarmScreen';
 import { challenges, initialAlarmDraft, repeatPresets } from '../../features/newAlarm/data';
-import { formatDays, getSelectedChallenge } from '../../features/newAlarm/utils';
+import { draftToPersistedAlarm, persistedAlarmToHomeAlarm } from '../../features/alarms/alarmMapper';
+import {
+  deleteAlarm,
+  loadAlarmState,
+  saveAlarmDraft,
+  setAlarmEnabled,
+} from '../../features/alarms/alarmStore';
 import { theme } from '../../theme';
+
 
 function parseAlarmTime(time) {
   const [hour, minute] = time.split(':').map(Number);
@@ -44,6 +49,27 @@ function challengeIdFromTitle(title) {
 }
 
 function alarmToDraft(alarm) {
+  if ('isActive' in alarm) {
+    return {
+      ...initialAlarmDraft,
+      challengeId: alarm.challengeId,
+      customChallengeDescription:
+        alarm.customChallengeDescription ?? initialAlarmDraft.customChallengeDescription,
+      customChallengeTitle: alarm.customChallengeTitle ?? initialAlarmDraft.customChallengeTitle,
+      days: alarm.repeatDays,
+      hour: alarm.hour,
+      label: alarm.label,
+      minute: alarm.minute,
+      notification: alarm.isActive,
+      period: alarm.period,
+      repeatPreset: alarm.repeatPreset,
+      smartWake: alarm.smartWakeEnabled,
+      snooze: alarm.snoozeMinutes,
+      sound: alarm.sound ?? initialAlarmDraft.sound,
+      vibration: alarm.vibrationEnabled,
+    };
+  }
+
   const { hour, minute } = parseAlarmTime(alarm.time);
   const repeat = resolveRepeat(alarm.schedule);
   const challengeId = challengeIdFromTitle(alarm.title);
@@ -62,43 +88,55 @@ function alarmToDraft(alarm) {
   };
 }
 
-function draftToAlarm(draft, existingAlarm) {
-  const selectedChallenge = getSelectedChallenge(draft);
-
-  return {
-    ...existingAlarm,
-    active: draft.notification,
-    backgroundColor: selectedChallenge.backgroundColor,
-    icon: selectedChallenge.icon,
-    iconColor: selectedChallenge.iconColor,
-    label: draft.label,
-    meridiem: draft.period,
-    schedule: draft.repeatPreset === 'Daily' ? 'Daily  |  Growth Mode' : formatDays(draft.days),
-    time: `${String(draft.hour).padStart(2, '0')}:${String(draft.minute).padStart(2, '0')}`,
-    title: selectedChallenge.title,
-  };
-}
+const fallbackPersistedAlarms = initialAlarms.map((alarm) =>
+  draftToPersistedAlarm(alarmToDraft(alarm), { id: alarm.id }),
+);
 
 export default function HomeScreen() {
   const { width } = useWindowDimensions();
-  const [alarms, setAlarms] = useState(initialAlarms);
+  const [alarms, setAlarms] = useState(fallbackPersistedAlarms);
   const [editingAlarmId, setEditingAlarmId] = useState(null);
   const [newAlarmVisible, setNewAlarmVisible] = useState(false);
   const [newAlarmMounted, setNewAlarmMounted] = useState(false);
   const newAlarmTranslateX = useRef(new Animated.Value(width)).current;
 
-  const activeCount = useMemo(() => alarms.filter((alarm) => alarm.active).length, [alarms]);
+  const homeAlarms = useMemo(() => alarms.map(persistedAlarmToHomeAlarm), [alarms]);
+  const activeCount = useMemo(() => alarms.filter((alarm) => alarm.isActive).length, [alarms]);
   const editorInitialDraft = useMemo(() => {
     const editingAlarm = alarms.find((alarm) => alarm.id === editingAlarmId);
     return editingAlarm ? alarmToDraft(editingAlarm) : initialAlarmDraft;
   }, [alarms, editingAlarmId]);
 
-  const handleToggleAlarm = (alarmId) => {
-    setAlarms((currentAlarms) =>
-      currentAlarms.map((alarm) =>
-        alarm.id === alarmId ? { ...alarm, active: !alarm.active } : alarm,
-      ),
+  const handleToggleAlarm = async (alarmId) => {
+    const alarm = alarms.find((item) => item.id === alarmId);
+    if (!alarm) return;
+
+    const previousAlarms = alarms;
+    const nextEnabled = !alarm.isActive;
+    const optimisticAlarms = alarms.map((item) =>
+      item.id === alarmId ? { ...item, isActive: nextEnabled } : item,
     );
+
+    setAlarms(optimisticAlarms);
+
+    try {
+      setAlarms(await setAlarmEnabled(previousAlarms, alarmId, nextEnabled));
+    } catch (error) {
+      setAlarms(previousAlarms);
+      Alert.alert('Alarm update failed', error.message);
+    }
+  };
+
+  const handleDeleteAlarm = async (alarmId) => {
+    const previousAlarms = alarms;
+    setAlarms((currentAlarms) => currentAlarms.filter((alarm) => alarm.id !== alarmId));
+
+    try {
+      setAlarms(await deleteAlarm(previousAlarms, alarmId));
+    } catch (error) {
+      setAlarms(previousAlarms);
+      Alert.alert('Alarm delete failed', error.message);
+    }
   };
 
   const showAction = (title, message) => {
@@ -121,16 +159,20 @@ export default function HomeScreen() {
     setNewAlarmVisible(false);
   };
 
-  const saveEditorDraft = (savedDraft) => {
-    if (editingAlarmId) {
-      setAlarms((currentAlarms) =>
-        currentAlarms.map((alarm) =>
-          alarm.id === editingAlarmId ? draftToAlarm(savedDraft, alarm) : alarm,
-        ),
-      );
-    }
+  const saveEditorDraft = async (savedDraft) => {
+    const previousAlarms = alarms;
 
-    closeNewAlarm();
+    try {
+      const nextAlarms = await saveAlarmDraft(previousAlarms, savedDraft, editingAlarmId);
+      setAlarms(nextAlarms);
+      closeNewAlarm();
+    } catch (error) {
+      if (error.nextAlarms) {
+        setAlarms(error.nextAlarms);
+        closeNewAlarm();
+      }
+      Alert.alert('Alarm save failed', error.message);
+    }
   };
 
   useEffect(() => {
@@ -139,6 +181,24 @@ export default function HomeScreen() {
     }, 350);
 
     return () => clearTimeout(warmTimer);
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    loadAlarmState(fallbackPersistedAlarms)
+      .then((loadedAlarms) => {
+        if (mounted) {
+          setAlarms(loadedAlarms);
+        }
+      })
+      .catch((error) => {
+        Alert.alert('Could not load alarms', error.message);
+      });
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -169,23 +229,30 @@ export default function HomeScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          <HomeHeader />
-          <StreakBanner />
+         
           <GreetingPanel
             onProfilePress={() => showAction('Profile', 'Profile action is ready.')}
           />
-          <ShortcutGrid
-            items={shortcuts}
-            onShortcutPress={(item) => showAction(item.label, `${item.label} action is ready.`)}
+          <NextAlarmBanner
+          time="06:00 AM"
+          remaining="in 7h 12m"
+          challenge="Scan Toothbrush"
           />
+          
           <AlarmSectionHeader
             activeCount={activeCount}
-            totalCount={alarms.length}
+            totalCount={homeAlarms.length}
             onAddPress={openNewAlarm}
           />
           <AlarmList
-            alarms={alarms}
-            onOpenAlarm={openEditAlarm}
+            alarms={homeAlarms}
+            onDeleteAlarm={handleDeleteAlarm}
+            onOpenAlarm={(alarm) => {
+              const persistedAlarm = alarms.find((item) => item.id === alarm.id);
+              if (persistedAlarm) {
+                openEditAlarm(persistedAlarm);
+              }
+            }}
             onToggleAlarm={handleToggleAlarm}
           />
         </ScrollView>

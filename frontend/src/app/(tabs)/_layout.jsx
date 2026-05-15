@@ -1,10 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Tabs } from 'expo-router';
+import { Tabs, router } from 'expo-router';
+import { useEffect, useState } from 'react';
 
+import { getLaunchDestination } from '../../services/permissionService';
 import { theme } from '../../theme';
 
 const icons = {
-  index: ['home', 'home-outline'],
+  home: ['home', 'home-outline'],
   streak: ['flame', 'flame-outline'],
   setting: ['settings', 'settings-outline'],
 };
@@ -15,6 +17,37 @@ function TabIcon({ name, focused, color, size }) {
 }
 
 export default function TabsLayout() {
+  const [allowed, setAllowed] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    getLaunchDestination()
+      .then((destination) => {
+        if (!mounted) return;
+
+        if (destination !== '/home') {
+          router.replace(destination);
+          return;
+        }
+
+        setAllowed(true);
+      })
+      .catch(() => {
+        if (mounted) {
+          router.replace('/permissions');
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  if (!allowed) {
+    return null;
+  }
+
   return (
     <Tabs
       screenOptions={({ route }) => ({
@@ -37,7 +70,7 @@ export default function TabsLayout() {
         ),
       })}
     >
-      <Tabs.Screen name="index" options={{ title: 'Home' }} />
+      <Tabs.Screen name="home" options={{ title: 'Home' }} />
       <Tabs.Screen name="streak" options={{ title: 'Streak' }} />
       <Tabs.Screen name="setting" options={{ title: 'Setting' }} />
     </Tabs>

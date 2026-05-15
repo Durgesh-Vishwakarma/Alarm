@@ -1,75 +1,50 @@
-import { Ionicons } from '@expo/vector-icons';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { theme } from '../../../theme';
 
-const avatarUri = 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=160&q=80';
-
-export function GreetingPanel({ onProfilePress }) {
+export function GreetingPanel() {
   return (
-    <View style={styles.row}>
-      <View>
-        <Text style={styles.caption}>Good morning,</Text>
-        <Text style={styles.name}>Durgesh</Text>
+    <View style={styles.wrap}>
+      <View style={styles.left}>
+        <Text style={styles.eyebrow}>Morning routine ready</Text>
+        <Text style={styles.title}>Your next wake-up is set</Text>
+        <Text style={styles.subtitle}>Complete a photo challenge to stop the next alarm.</Text>
       </View>
-
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Open profile"
-        onPress={onProfilePress}
-        style={({ pressed }) => [styles.avatarButton, pressed && styles.pressed]}
-      >
-        <Image source={{ uri: avatarUri }} style={styles.avatar} />
-        <View style={styles.avatarFallback}>
-          <Ionicons name="person" size={24} color={theme.colors.primary} />
-        </View>
-      </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
+  wrap: {
     alignItems: 'center',
     flexDirection: 'row',
+    gap: theme.space.sm,
     justifyContent: 'space-between',
-    marginTop: theme.space.sm,
+    paddingHorizontal: theme.space.lg,
+    paddingVertical: theme.space.md,
   },
-  caption: {
-    color: theme.colors.textMuted,
-    fontFamily: theme.fonts.bodyMedium,
-    fontSize: theme.fontSizes.sm,
-    marginBottom: 1,
+  left: {
+    flex: 1,
+    minWidth: 0,
   },
-  name: {
+  eyebrow: {
+    color: theme.colors.primary,
+    fontFamily: theme.fonts.bodyBold,
+    fontSize: 10,
+    marginBottom: theme.space.xs,
+    textTransform: 'uppercase',
+  },
+  title: {
     color: theme.colors.text,
     fontFamily: theme.fonts.heading,
-    fontSize: 26,
-    lineHeight: 32,
+    fontSize: 17,
+    lineHeight: 23,
   },
-  avatarButton: {
-    alignItems: 'center',
-    backgroundColor: theme.colors.surfaceMuted,
-    borderRadius: theme.radii.full,
-    height: 64,
-    justifyContent: 'center',
-    overflow: 'hidden',
-    width: 64,
-    ...theme.shadows.soft,
-  },
-  avatar: {
-    height: '100%',
-    position: 'absolute',
-    width: '100%',
-    zIndex: 1,
-  },
-  avatarFallback: {
-    alignItems: 'center',
-    height: '100%',
-    justifyContent: 'center',
-    width: '100%',
-  },
-  pressed: {
-    opacity: 0.72,
+  subtitle: {
+    color: theme.colors.textMuted,
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: theme.space.xs,
   },
 });

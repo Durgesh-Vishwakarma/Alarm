@@ -1,9 +1,11 @@
 package com.anonymous.SnapWake.alarm
 
 import android.app.AlarmManager
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
@@ -14,6 +16,7 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.ReadableArray
+import com.facebook.react.bridge.ReadableMap
 import kotlin.math.abs
 
 class AlarmScheduler(private val reactContext: ReactApplicationContext) :
@@ -39,11 +42,37 @@ class AlarmScheduler(private val reactContext: ReactApplicationContext) :
         repeatDays.getString(i)?.let { repeatList.add(it) }
       }
 
-      persistAlarm(alarmId, triggerAt, label, repeatList, time, period, ringtone)
-      scheduleExact(reactContext, alarmId, triggerAt, label, repeatList, time, period, ringtone)
+      scheduleFromValues(alarmId, triggerAt, label, repeatList, time, period, ringtone)
       promise.resolve(true)
     } catch (error: Exception) {
       promise.reject("SCHEDULE_ALARM_FAILED", error)
+    }
+  }
+
+  @ReactMethod
+  fun scheduleNativeAlarm(payload: ReadableMap, promise: Promise) {
+    try {
+      val alarmId = payload.getString("id") ?: throw IllegalArgumentException("Alarm id is required")
+      val triggerAt = payload.getDouble("nextTriggerAt").toLong()
+      val label = payload.getString("label")
+        ?: payload.getString("challengeTitle")
+        ?: "Snapwake Alarm"
+      val time = payload.getString("time") ?: ""
+      val period = payload.getString("period") ?: ""
+      val ringtone = payload.getString("ringtone") ?: "ringtone"
+      val repeatList = mutableListOf<String>()
+      val repeatDays = payload.getArray("repeatDays")
+
+      if (repeatDays != null) {
+        for (i in 0 until repeatDays.size()) {
+          repeatDays.getString(i)?.let { repeatList.add(it) }
+        }
+      }
+
+      scheduleFromValues(alarmId, triggerAt, label, repeatList, time, period, ringtone)
+      promise.resolve(true)
+    } catch (error: Exception) {
+      promise.reject("SCHEDULE_NATIVE_ALARM_FAILED", error)
     }
   }
 
@@ -56,6 +85,11 @@ class AlarmScheduler(private val reactContext: ReactApplicationContext) :
     } catch (error: Exception) {
       promise.reject("CANCEL_ALARM_FAILED", error)
     }
+  }
+
+  @ReactMethod
+  fun cancelNativeAlarm(alarmId: String, promise: Promise) {
+    cancelAlarm(alarmId, promise)
   }
 
   @ReactMethod
@@ -79,6 +113,43 @@ class AlarmScheduler(private val reactContext: ReactApplicationContext) :
   }
 
   @ReactMethod
+  fun getAlarmPermissionStatus(promise: Promise) {
+    try {
+      val alarmManager = reactContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+      val powerManager = reactContext.getSystemService(Context.POWER_SERVICE) as PowerManager
+      val notificationManager =
+        reactContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+      val status = Arguments.createMap()
+      val exactAllowed =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarmManager.canScheduleExactAlarms()
+      val fullScreenAllowed =
+        Build.VERSION.SDK_INT < 34 || notificationManager.canUseFullScreenIntent()
+      val notificationAllowed =
+        Build.VERSION.SDK_INT < 33 ||
+          reactContext.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) ==
+          PackageManager.PERMISSION_GRANTED
+
+      status.putBoolean("canScheduleExactAlarms", exactAllowed)
+      status.putBoolean("fullScreenIntentAllowed", fullScreenAllowed)
+      status.putBoolean("overlayAllowed", Settings.canDrawOverlays(reactContext))
+      status.putBoolean(
+        "ignoringBatteryOptimizations",
+        powerManager.isIgnoringBatteryOptimizations(reactContext.packageName)
+      )
+      status.putBoolean("notificationsAllowed", notificationAllowed)
+      status.putBoolean("backgroundExecutionSupported", true)
+      promise.resolve(status)
+    } catch (error: Exception) {
+      promise.reject("ALARM_PERMISSION_STATUS_FAILED", error)
+    }
+  }
+
+  @ReactMethod
+  fun requestExactAlarmPermission(promise: Promise) {
+    openExactAlarmSettings(promise)
+  }
+
+  @ReactMethod
   fun openExactAlarmSettings(promise: Promise) {
     try {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -91,6 +162,53 @@ class AlarmScheduler(private val reactContext: ReactApplicationContext) :
       promise.resolve(true)
     } catch (error: Exception) {
       promise.reject("EXACT_ALARM_SETTINGS_FAILED", error)
+    }
+  }
+
+  @ReactMethod
+  fun openFullScreenAlarmSettings(promise: Promise) {
+    try {
+      if (Build.VERSION.SDK_INT >= 34) {
+        val intent = Intent("android.settings.MANAGE_APP_USE_FULL_SCREEN_INTENT").apply {
+          data = Uri.parse("package:${reactContext.packageName}")
+          flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        reactContext.startActivity(intent)
+      } else {
+        openAppSettings(promise)
+        return
+      }
+      promise.resolve(true)
+    } catch (error: Exception) {
+      openAppSettings(promise)
+    }
+  }
+
+  @ReactMethod
+  fun openOverlaySettings(promise: Promise) {
+    try {
+      val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
+        data = Uri.parse("package:${reactContext.packageName}")
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+      }
+      reactContext.startActivity(intent)
+      promise.resolve(true)
+    } catch (error: Exception) {
+      openAppSettings(promise)
+    }
+  }
+
+  @ReactMethod
+  fun openAppSettings(promise: Promise) {
+    try {
+      val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+        data = Uri.parse("package:${reactContext.packageName}")
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+      }
+      reactContext.startActivity(intent)
+      promise.resolve(true)
+    } catch (error: Exception) {
+      promise.reject("APP_SETTINGS_FAILED", error)
     }
   }
 
@@ -121,6 +239,11 @@ class AlarmScheduler(private val reactContext: ReactApplicationContext) :
         promise.reject("BATTERY_OPTIMIZATION_SETTINGS_FAILED", fallbackError)
       }
     }
+  }
+
+  @ReactMethod
+  fun requestIgnoreBatteryOptimizations(promise: Promise) {
+    openIgnoreBatteryOptimizations(promise)
   }
 
   @ReactMethod
@@ -159,6 +282,19 @@ class AlarmScheduler(private val reactContext: ReactApplicationContext) :
       .putString("$alarmId:period", period)
       .putString("$alarmId:ringtone", ringtone)
       .apply()
+  }
+
+  private fun scheduleFromValues(
+    alarmId: String,
+    triggerAt: Long,
+    label: String,
+    repeatDays: List<String>,
+    time: String,
+    period: String,
+    ringtone: String
+  ) {
+    persistAlarm(alarmId, triggerAt, label, repeatDays, time, period, ringtone)
+    scheduleExact(reactContext, alarmId, triggerAt, label, repeatDays, time, period, ringtone)
   }
 
   private fun removePersistedAlarm(alarmId: String) {

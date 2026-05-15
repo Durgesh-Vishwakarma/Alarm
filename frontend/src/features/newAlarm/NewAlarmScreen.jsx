@@ -1,31 +1,16 @@
-import { Alert, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 
 import { theme } from '../../theme';
-import { FooterActions } from './components/FooterActions';
+import { ChallengeStep } from './components/ChallengeStep';
 import { NewAlarmHeader } from './components/NewAlarmHeader';
-import { StepProgress } from './components/StepProgress';
+import { RingtonePicker } from './components/RingtonePicker';
 import { TimeStep } from './components/TimeStep';
-import { initialAlarmDraft, steps } from './data';
+import { initialAlarmDraft } from './data';
+import { stopRingtonePreview } from './ringtonePreview';
 import { formatTime, getSelectedChallenge } from './utils';
-
-function getStepComponent(step) {
-  if (step === 1) {
-    return require('./components/RepeatStep').RepeatStep;
-  }
-
-  if (step === 2) {
-    return require('./components/ChallengeStep').ChallengeStep;
-  }
-
-  if (step === 3) {
-    return require('./components/SettingsStep').SettingsStep;
-  }
-
-  return TimeStep;
-}
 
 export function NewAlarmScreen({
   initialDraft = initialAlarmDraft,
@@ -34,17 +19,21 @@ export function NewAlarmScreen({
   onSaved,
 } = {}) {
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const [currentStep, setCurrentStep] = useState(0);
   const [draft, setDraft] = useState(initialDraft);
   const [screenScrollEnabled, setScreenScrollEnabled] = useState(true);
   const headerTitle = mode === 'edit' ? 'Edit Alarm' : 'New Alarm';
 
   useEffect(() => {
     setDraft(initialDraft);
-    setCurrentStep(0);
     setScreenScrollEnabled(true);
+    stopRingtonePreview();
   }, [initialDraft]);
+
+  useEffect(() => {
+    return () => {
+      stopRingtonePreview();
+    };
+  }, []);
 
   const selectedChallenge = useMemo(
     () => getSelectedChallenge(draft),
@@ -56,10 +45,7 @@ export function NewAlarmScreen({
   };
 
   const goBack = () => {
-    if (currentStep > 0) {
-      setCurrentStep((step) => step - 1);
-      return;
-    }
+    stopRingtonePreview();
 
     if (onClose) {
       onClose();
@@ -70,85 +56,51 @@ export function NewAlarmScreen({
   };
 
   const saveAlarm = () => {
-    Alert.alert(
-      'Alarm saved',
-      `${formatTime(draft)} - ${selectedChallenge.title}`,
-      [
-        {
-          text: 'Done',
-          onPress: () => {
-            if (onSaved) {
-              onSaved(draft);
-              return;
-            }
+    stopRingtonePreview();
 
-            router.replace('/');
-          },
-        },
-      ],
-    );
-  };
-
-  const continueFlow = () => {
-    if (currentStep === steps.length - 1) {
-      saveAlarm();
+    if (onSaved) {
+      onSaved(draft);
       return;
     }
 
-    setCurrentStep((step) => step + 1);
+    Alert.alert('Alarm saved', `${formatTime(draft)} - ${selectedChallenge.title}`, [
+      { text: 'Done', onPress: () => router.replace('/home') },
+    ]);
   };
-
-  const contentStyle = [
-    styles.content,
-    width >= 760 && currentStep === 3 ? styles.contentWide : null,
-  ];
-  const CurrentStepComponent = getStepComponent(currentStep);
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.screen}>
         <ScrollView
-          contentContainerStyle={contentStyle}
+          contentContainerStyle={styles.content}
+          onTouchStart={stopRingtonePreview}
           scrollEnabled={screenScrollEnabled}
           showsVerticalScrollIndicator={false}
         >
           <NewAlarmHeader onBack={goBack} onSave={saveAlarm} title={headerTitle} />
-          <StepProgress currentStep={currentStep} onStepPress={setCurrentStep} />
-
-          {currentStep === 0 ? (
-            <CurrentStepComponent
+          <View style={styles.section}>
+            <TimeStep
               draft={draft}
-              goToStep={setCurrentStep}
               onWheelInteractionEnd={() => setScreenScrollEnabled(true)}
               onWheelInteractionStart={() => setScreenScrollEnabled(false)}
-              selectedChallenge={selectedChallenge}
               updateDraft={updateDraft}
             />
-          ) : null}
-
-          {currentStep === 1 ? (
-            <CurrentStepComponent draft={draft} updateDraft={updateDraft} />
-          ) : null}
-
-          {currentStep === 2 ? (
-            <CurrentStepComponent draft={draft} updateDraft={updateDraft} />
-          ) : null}
-
-          {currentStep === 3 ? (
-            <CurrentStepComponent
-              draft={draft}
-              selectedChallenge={selectedChallenge}
-              updateDraft={updateDraft}
-            />
-          ) : null}
+          </View>
+          <View style={styles.section}>
+            <ChallengeStep draft={draft} updateDraft={updateDraft} />
+          </View>
+          <View style={styles.section}>
+            <RingtonePicker draft={draft} updateDraft={updateDraft} />
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={mode === 'edit' ? 'Save alarm changes' : 'Save alarm'}
+            onPress={saveAlarm}
+            style={({ pressed }) => [styles.saveButton, pressed && styles.pressed]}
+          >
+            <Text style={styles.saveText}>{mode === 'edit' ? 'Save Changes' : 'Save Alarm'}</Text>
+          </Pressable>
         </ScrollView>
-
-        <FooterActions
-          currentStep={currentStep}
-          isLastStep={currentStep === steps.length - 1}
-          onBack={goBack}
-          onContinue={continueFlow}
-        />
       </View>
     </SafeAreaView>
   );
@@ -163,12 +115,29 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingBottom: 112,
-    paddingHorizontal: 22,
-    paddingTop: theme.space.md,
+    gap: theme.space.md,
+    paddingBottom: theme.space.xxxl,
+    paddingHorizontal: theme.space.lg,
+    paddingTop: theme.space.sm,
   },
-  contentWide: {
-    maxWidth: 1120,
-    width: '100%',
+  section: {
+    gap: theme.space.md,
+  },
+  saveButton: {
+    alignItems: 'center',
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.radii.full,
+    height: 56,
+    justifyContent: 'center',
+    marginTop: theme.space.sm,
+    ...theme.shadows.glow,
+  },
+  saveText: {
+    color: theme.colors.white,
+    fontFamily: theme.fonts.heading,
+    fontSize: theme.fontSizes.sm,
+  },
+  pressed: {
+    opacity: 0.74,
   },
 });

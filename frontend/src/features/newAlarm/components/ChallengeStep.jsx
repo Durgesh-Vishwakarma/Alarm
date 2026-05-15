@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { theme } from '../../../theme';
 import { challenges } from '../data';
@@ -10,6 +10,7 @@ export function ChallengeStep({ draft, updateDraft }) {
   const selectChallenge = (challenge) => {
     updateDraft({ challengeId: challenge.id });
   };
+  const visibleChallenges = challenges.filter((challenge) => challenge.id !== 'custom-challenge');
 
   return (
     <View>
@@ -19,23 +20,14 @@ export function ChallengeStep({ draft, updateDraft }) {
       />
 
       <View style={styles.list}>
-        {challenges.map((challenge) => {
+        {visibleChallenges.map((challenge) => {
           const selected = draft.challengeId === challenge.id;
-          const isCustom = challenge.id === 'custom-challenge';
-          const title =
-            isCustom && draft.customChallengeTitle?.trim()
-              ? draft.customChallengeTitle
-              : challenge.title;
-          const description =
-            isCustom && draft.customChallengeDescription?.trim()
-              ? draft.customChallengeDescription
-              : challenge.description;
 
           return (
             <View key={challenge.id}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={title}
+                accessibilityLabel={challenge.title}
                 onPress={() => selectChallenge(challenge)}
                 style={({ pressed }) => [
                   styles.card,
@@ -47,8 +39,8 @@ export function ChallengeStep({ draft, updateDraft }) {
                   <Ionicons name={challenge.icon} size={42} color={challenge.iconColor} />
                 </View>
                 <View style={styles.copy}>
-                  <Text style={styles.title}>{title}</Text>
-                  <Text style={styles.description}>{description}</Text>
+                  <Text style={styles.title}>{challenge.title}</Text>
+                  <Text style={styles.description}>{challenge.description}</Text>
                 </View>
                 <View style={[styles.radio, selected && styles.radioSelected]}>
                   {selected ? (
@@ -56,36 +48,6 @@ export function ChallengeStep({ draft, updateDraft }) {
                   ) : null}
                 </View>
               </Pressable>
-
-              {selected && isCustom ? (
-                <View style={styles.customEditor}>
-                  <Text style={styles.editorLabel}>Challenge name</Text>
-                  <TextInput
-                    accessibilityLabel="Custom challenge name"
-                    onChangeText={(customChallengeTitle) =>
-                      updateDraft({ customChallengeTitle })
-                    }
-                    placeholder="Example: Drink a glass of water"
-                    placeholderTextColor={theme.colors.textLight}
-                    style={styles.input}
-                    value={draft.customChallengeTitle}
-                  />
-
-                  <Text style={styles.editorLabel}>What should you do?</Text>
-                  <TextInput
-                    accessibilityLabel="Custom challenge description"
-                    multiline
-                    onChangeText={(customChallengeDescription) =>
-                      updateDraft({ customChallengeDescription })
-                    }
-                    placeholder="Write the action needed to stop the alarm"
-                    placeholderTextColor={theme.colors.textLight}
-                    style={[styles.input, styles.textArea]}
-                    textAlignVertical="top"
-                    value={draft.customChallengeDescription}
-                  />
-                </View>
-              ) : null}
             </View>
           );
         })}
@@ -104,30 +66,30 @@ export function ChallengeStep({ draft, updateDraft }) {
 
 const styles = StyleSheet.create({
   list: {
-    gap: theme.space.lg,
+    gap: theme.space.sm,
   },
   card: {
     alignItems: 'center',
     backgroundColor: theme.colors.surface,
     borderColor: theme.colors.border,
-    borderRadius: theme.radii.lg,
+    borderRadius: theme.radii.md,
     borderWidth: 1,
     flexDirection: 'row',
-    minHeight: 114,
-    padding: theme.space.lg,
+    minHeight: 82,
+    padding: theme.space.sm,
     ...theme.shadows.soft,
   },
   cardSelected: {
     borderColor: theme.colors.primary,
-    borderWidth: 2,
+    borderWidth: 1.5,
   },
   iconBox: {
     alignItems: 'center',
-    borderRadius: theme.radii.md,
-    height: 78,
+    borderRadius: theme.radii.sm,
+    height: 54,
     justifyContent: 'center',
-    marginRight: theme.space.lg,
-    width: 78,
+    marginRight: theme.space.md,
+    width: 54,
   },
   copy: {
     flex: 1,
@@ -136,23 +98,23 @@ const styles = StyleSheet.create({
   title: {
     color: theme.colors.text,
     fontFamily: theme.fonts.heading,
-    fontSize: theme.fontSizes.md,
+    fontSize: 13,
   },
   description: {
     color: theme.colors.textMuted,
     fontFamily: theme.fonts.bodyMedium,
-    fontSize: theme.fontSizes.sm,
-    lineHeight: 20,
+    fontSize: theme.fontSizes.xs,
+    lineHeight: 16,
   },
   radio: {
     alignItems: 'center',
     borderColor: theme.colors.border,
     borderRadius: theme.radii.full,
     borderWidth: 2,
-    height: 28,
+    height: 24,
     justifyContent: 'center',
     marginLeft: theme.space.md,
-    width: 28,
+    width: 24,
   },
   radioSelected: {
     backgroundColor: theme.colors.primary,
@@ -162,9 +124,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: theme.radii.lg,
     flexDirection: 'row',
-    gap: theme.space.lg,
-    marginTop: theme.space.xxl,
-    padding: theme.space.xl,
+    gap: theme.space.md,
+    marginTop: theme.space.md,
+    padding: theme.space.md,
   },
   tipCopy: {
     flex: 1,
@@ -173,45 +135,15 @@ const styles = StyleSheet.create({
   tipTitle: {
     color: theme.colors.text,
     fontFamily: theme.fonts.heading,
-    fontSize: theme.fontSizes.sm,
+    fontSize: 13,
   },
   tipText: {
     color: theme.colors.textMuted,
     fontFamily: theme.fonts.bodyMedium,
-    fontSize: theme.fontSizes.sm,
-    lineHeight: 20,
+    fontSize: theme.fontSizes.xs,
+    lineHeight: 17,
   },
   pressed: {
     opacity: 0.68,
-  },
-  customEditor: {
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.primary,
-    borderRadius: theme.radii.lg,
-    borderWidth: 1,
-    gap: theme.space.sm,
-    marginTop: theme.space.md,
-    padding: theme.space.lg,
-    ...theme.shadows.soft,
-  },
-  editorLabel: {
-    color: theme.colors.text,
-    fontFamily: theme.fonts.bodyBold,
-    fontSize: theme.fontSizes.xs,
-  },
-  input: {
-    backgroundColor: theme.colors.background,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radii.md,
-    borderWidth: 1,
-    color: theme.colors.text,
-    fontFamily: theme.fonts.bodyMedium,
-    fontSize: theme.fontSizes.md,
-    minHeight: 48,
-    paddingHorizontal: theme.space.md,
-    paddingVertical: theme.space.sm,
-  },
-  textArea: {
-    minHeight: 86,
   },
 });

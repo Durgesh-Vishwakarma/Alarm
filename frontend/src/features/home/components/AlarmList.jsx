@@ -1,7 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Animated, PanResponder, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { useRef } from 'react';
 
 import { theme } from '../../../theme';
+
+const DELETE_REVEAL_WIDTH = 86;
 
 export function AlarmSectionHeader({ activeCount, totalCount, onAddPress }) {
   return (
@@ -26,14 +29,60 @@ export function AlarmSectionHeader({ activeCount, totalCount, onAddPress }) {
   );
 }
 
-export function AlarmList({ alarms, onToggleAlarm, onOpenAlarm }) {
+function AlarmRow({ alarm, onDeleteAlarm, onOpenAlarm, onToggleAlarm }) {
+  const translateX = useRef(new Animated.Value(0)).current;
+  const openRef = useRef(false);
+
+  const animateTo = (toValue) => {
+    Animated.spring(translateX, {
+      damping: 18,
+      mass: 0.7,
+      stiffness: 180,
+      toValue,
+      useNativeDriver: true,
+    }).start(() => {
+      openRef.current = toValue !== 0;
+    });
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) =>
+        Math.abs(gestureState.dx) > 12 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy),
+      onPanResponderMove: (_, gestureState) => {
+        const base = openRef.current ? -DELETE_REVEAL_WIDTH : 0;
+        const nextX = Math.max(-DELETE_REVEAL_WIDTH, Math.min(0, base + gestureState.dx));
+        translateX.setValue(nextX);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        const shouldOpen = gestureState.dx < -32 || (openRef.current && gestureState.dx < 32);
+        animateTo(shouldOpen ? -DELETE_REVEAL_WIDTH : 0);
+      },
+      onPanResponderTerminate: () => {
+        animateTo(openRef.current ? -DELETE_REVEAL_WIDTH : 0);
+      },
+    }),
+  ).current;
+
   return (
-    <View style={styles.list}>
-      {alarms.map((alarm) => (
+    <View style={styles.swipeWrap}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Delete ${alarm.title}`}
+        onPress={() => onDeleteAlarm(alarm.id)}
+        style={styles.deleteAction}
+      >
+        <Ionicons name="trash-outline" size={24} color={theme.colors.white} />
+        <Text style={styles.deleteText}>Delete</Text>
+      </Pressable>
+
+      <Animated.View
+        style={[styles.swipeCard, { transform: [{ translateX }] }]}
+        {...panResponder.panHandlers}
+      >
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Open ${alarm.title}`}
-          key={alarm.id}
           onPress={() => onOpenAlarm(alarm)}
           style={({ pressed }) => [styles.alarmCard, pressed && styles.pressed]}
         >
@@ -71,6 +120,22 @@ export function AlarmList({ alarms, onToggleAlarm, onOpenAlarm }) {
 
           <Ionicons name="chevron-forward" size={17} color={theme.colors.textLight} />
         </Pressable>
+      </Animated.View>
+    </View>
+  );
+}
+
+export function AlarmList({ alarms, onDeleteAlarm, onToggleAlarm, onOpenAlarm }) {
+  return (
+    <View style={styles.list}>
+      {alarms.map((alarm) => (
+        <AlarmRow
+          alarm={alarm}
+          key={alarm.id}
+          onDeleteAlarm={onDeleteAlarm}
+          onOpenAlarm={onOpenAlarm}
+          onToggleAlarm={onToggleAlarm}
+        />
       ))}
     </View>
   );
@@ -114,6 +179,29 @@ const styles = StyleSheet.create({
   list: {
     gap: theme.space.md,
     paddingTop: theme.space.md,
+  },
+  swipeWrap: {
+    borderRadius: theme.radii.lg,
+    overflow: 'hidden',
+  },
+  deleteAction: {
+    alignItems: 'center',
+    backgroundColor: theme.colors.danger,
+    bottom: 0,
+    gap: theme.space.xs,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    width: DELETE_REVEAL_WIDTH,
+  },
+  deleteText: {
+    color: theme.colors.white,
+    fontFamily: theme.fonts.bodyBold,
+    fontSize: 11,
+  },
+  swipeCard: {
+    backgroundColor: theme.colors.background,
   },
   alarmCard: {
     alignItems: 'center',
