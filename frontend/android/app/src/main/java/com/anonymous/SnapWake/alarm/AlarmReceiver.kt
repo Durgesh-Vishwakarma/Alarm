@@ -32,6 +32,7 @@ class AlarmReceiver : BroadcastReceiver() {
     val alarmId = intent.getStringExtra(EXTRA_ALARM_ID) ?: return
     val time = intent.getStringExtra(EXTRA_ALARM_TIME).orEmpty()
     val period = intent.getStringExtra(EXTRA_ALARM_PERIOD).orEmpty()
+    val vibrationEnabled = intent.getBooleanExtra(EXTRA_ALARM_VIBRATION, true)
     val nextTrigger = nextTriggerMillis(time, period, repeatDays)
 
     AlarmScheduler.scheduleExact(
@@ -42,12 +43,14 @@ class AlarmReceiver : BroadcastReceiver() {
       repeatDays,
       time,
       period,
-      intent.getStringExtra(EXTRA_ALARM_RINGTONE) ?: "ringtone"
+      intent.getStringExtra(EXTRA_ALARM_RINGTONE) ?: "ringtone",
+      vibrationEnabled
     )
 
     context.getSharedPreferences(ALARM_PREFS, Context.MODE_PRIVATE)
       .edit()
       .putLong("$alarmId:triggerAt", nextTrigger)
+      .putBoolean("$alarmId:vibration", vibrationEnabled)
       .apply()
   }
 

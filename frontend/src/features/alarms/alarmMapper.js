@@ -52,7 +52,11 @@ export function persistedAlarmToHomeAlarm(alarm) {
     meridiem: alarm.period,
     nextTriggerAt: alarm.nextTriggerAt,
     schedule:
-      alarm.repeatPreset === 'Daily' ? 'Daily  |  Growth Mode' : formatDays(alarm.repeatDays),
+      alarm.repeatDays.length === 0
+        ? 'Ring once'
+        : alarm.repeatPreset === 'Daily'
+          ? 'Daily  |  Growth Mode'
+          : formatDays(alarm.repeatDays),
     time: alarm.time,
     title: alarm.challengeTitle,
   };

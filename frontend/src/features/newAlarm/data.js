@@ -8,6 +8,7 @@ export const steps = [
 export const dayOptions = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export const repeatPresets = {
+  Once: [],
   Weekdays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
   Weekend: ['Sat', 'Sun'],
   Daily: dayOptions,

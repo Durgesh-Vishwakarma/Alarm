@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { theme } from '../../theme';
 import { ChallengeStep } from './components/ChallengeStep';
 import { NewAlarmHeader } from './components/NewAlarmHeader';
+import { RepeatAlarmSettings } from './components/RepeatAlarmSettings';
 import { RingtonePicker } from './components/RingtonePicker';
 import { TimeStep } from './components/TimeStep';
 import { initialAlarmDraft } from './data';
@@ -87,6 +88,9 @@ export function NewAlarmScreen({
             />
           </View>
           <View style={styles.section}>
+            <RepeatAlarmSettings draft={draft} updateDraft={updateDraft} />
+          </View>
+          <View style={styles.section}>
             <ChallengeStep draft={draft} updateDraft={updateDraft} />
           </View>
           <View style={styles.section}>
@@ -115,7 +119,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    gap: theme.space.md,
+    gap: theme.space.lg,
     paddingBottom: theme.space.xxxl,
     paddingHorizontal: theme.space.lg,
     paddingTop: theme.space.sm,
@@ -127,7 +131,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: theme.colors.primary,
     borderRadius: theme.radii.full,
-    height: 56,
+    height: 54,
     justifyContent: 'center',
     marginTop: theme.space.sm,
     ...theme.shadows.glow,
@@ -135,7 +139,7 @@ const styles = StyleSheet.create({
   saveText: {
     color: theme.colors.white,
     fontFamily: theme.fonts.heading,
-    fontSize: theme.fontSizes.sm,
+    fontSize: 13,
   },
   pressed: {
     opacity: 0.74,

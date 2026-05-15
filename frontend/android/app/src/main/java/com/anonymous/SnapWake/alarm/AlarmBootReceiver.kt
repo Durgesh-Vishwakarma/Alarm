@@ -29,7 +29,8 @@ class AlarmBootReceiver : BroadcastReceiver() {
         repeatDays,
         prefs.getString("$alarmId:time", "") ?: "",
         prefs.getString("$alarmId:period", "") ?: "",
-        prefs.getString("$alarmId:ringtone", "ringtone") ?: "ringtone"
+        prefs.getString("$alarmId:ringtone", "ringtone") ?: "ringtone",
+        prefs.getBoolean("$alarmId:vibration", true)
       )
     }
   }

@@ -53,13 +53,7 @@ export function ChallengeStep({ draft, updateDraft }) {
         })}
       </View>
 
-      <LinearGradient colors={['#FFF5EB', '#FFEAD9']} style={styles.tip}>
-        <Ionicons name="trophy" size={31} color={theme.colors.primary} />
-        <View style={styles.tipCopy}>
-          <Text style={styles.tipTitle}>Stay consistent, stay unstoppable!</Text>
-          <Text style={styles.tipText}>Challenges help you build powerful morning routines.</Text>
-        </View>
-      </LinearGradient>
+     
     </View>
   );
 }

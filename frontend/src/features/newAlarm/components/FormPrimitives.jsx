@@ -50,19 +50,19 @@ export function ToggleRow({ label, value, onValueChange }) {
 const styles = StyleSheet.create({
   titleBlock: {
     gap: theme.space.xs,
-    marginBottom: theme.space.md,
+    marginBottom: theme.space.sm,
   },
   title: {
     color: theme.colors.text,
     fontFamily: theme.fonts.heading,
-    fontSize: 17,
-    lineHeight: 23,
+    fontSize: 16,
+    lineHeight: 22,
   },
   subtitle: {
     color: theme.colors.textMuted,
     fontFamily: theme.fonts.bodyMedium,
-    fontSize: theme.fontSizes.xs,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 17,
   },
   row: {
     alignItems: 'center',

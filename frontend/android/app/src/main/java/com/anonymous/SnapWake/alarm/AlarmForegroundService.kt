@@ -38,6 +38,7 @@ class AlarmForegroundService : Service() {
     val alarmId = intent?.getStringExtra(EXTRA_ALARM_ID) ?: "active"
     val label = intent?.getStringExtra(EXTRA_ALARM_LABEL) ?: "SnapWake Alarm"
     val ringtone = intent?.getStringExtra(EXTRA_ALARM_RINGTONE) ?: "ringtone"
+    val vibrationEnabled = intent?.getBooleanExtra(EXTRA_ALARM_VIBRATION, true) ?: true
 
     getSharedPreferences(ALARM_PREFS, Context.MODE_PRIVATE)
       .edit()
@@ -47,7 +48,9 @@ class AlarmForegroundService : Service() {
     acquireWakeLock()
     startForeground(1001, buildNotification(alarmId, label))
     startSound(ringtone)
-    startVibration()
+    if (vibrationEnabled) {
+      startVibration()
+    }
     launchAlarmActivity(alarmId)
 
     return START_STICKY

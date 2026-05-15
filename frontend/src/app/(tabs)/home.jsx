@@ -199,7 +199,9 @@ export default function HomeScreen() {
 
     const challenge = getChallengeVisual(nextAlarm);
     const schedule =
-      nextAlarm.repeatPreset === 'Daily'
+      nextAlarm.repeatDays.length === 0
+        ? 'Ring once'
+        : nextAlarm.repeatPreset === 'Daily'
         ? 'Daily  |  Growth Mode'
         : nextAlarm.repeatDays.join(' - ');
 

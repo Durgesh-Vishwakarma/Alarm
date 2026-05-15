@@ -42,7 +42,7 @@ class AlarmScheduler(private val reactContext: ReactApplicationContext) :
         repeatDays.getString(i)?.let { repeatList.add(it) }
       }
 
-      scheduleFromValues(alarmId, triggerAt, label, repeatList, time, period, ringtone)
+      scheduleFromValues(alarmId, triggerAt, label, repeatList, time, period, ringtone, true)
       promise.resolve(true)
     } catch (error: Exception) {
       promise.reject("SCHEDULE_ALARM_FAILED", error)
@@ -60,6 +60,8 @@ class AlarmScheduler(private val reactContext: ReactApplicationContext) :
       val time = payload.getString("time") ?: ""
       val period = payload.getString("period") ?: ""
       val ringtone = payload.getString("ringtone") ?: "ringtone"
+      val vibrationEnabled =
+        !payload.hasKey("vibrationEnabled") || payload.getBoolean("vibrationEnabled")
       val repeatList = mutableListOf<String>()
       val repeatDays = payload.getArray("repeatDays")
 
@@ -69,7 +71,16 @@ class AlarmScheduler(private val reactContext: ReactApplicationContext) :
         }
       }
 
-      scheduleFromValues(alarmId, triggerAt, label, repeatList, time, period, ringtone)
+      scheduleFromValues(
+        alarmId,
+        triggerAt,
+        label,
+        repeatList,
+        time,
+        period,
+        ringtone,
+        vibrationEnabled
+      )
       promise.resolve(true)
     } catch (error: Exception) {
       promise.reject("SCHEDULE_NATIVE_ALARM_FAILED", error)
@@ -270,7 +281,8 @@ class AlarmScheduler(private val reactContext: ReactApplicationContext) :
     repeatDays: List<String>,
     time: String,
     period: String,
-    ringtone: String
+    ringtone: String,
+    vibrationEnabled: Boolean
   ) {
     reactContext.getSharedPreferences(ALARM_PREFS, Context.MODE_PRIVATE)
       .edit()
@@ -281,6 +293,7 @@ class AlarmScheduler(private val reactContext: ReactApplicationContext) :
       .putString("$alarmId:time", time)
       .putString("$alarmId:period", period)
       .putString("$alarmId:ringtone", ringtone)
+      .putBoolean("$alarmId:vibration", vibrationEnabled)
       .apply()
   }
 
@@ -291,10 +304,21 @@ class AlarmScheduler(private val reactContext: ReactApplicationContext) :
     repeatDays: List<String>,
     time: String,
     period: String,
-    ringtone: String
+    ringtone: String,
+    vibrationEnabled: Boolean
   ) {
-    persistAlarm(alarmId, triggerAt, label, repeatDays, time, period, ringtone)
-    scheduleExact(reactContext, alarmId, triggerAt, label, repeatDays, time, period, ringtone)
+    persistAlarm(alarmId, triggerAt, label, repeatDays, time, period, ringtone, vibrationEnabled)
+    scheduleExact(
+      reactContext,
+      alarmId,
+      triggerAt,
+      label,
+      repeatDays,
+      time,
+      period,
+      ringtone,
+      vibrationEnabled
+    )
   }
 
   private fun removePersistedAlarm(alarmId: String) {
@@ -308,6 +332,7 @@ class AlarmScheduler(private val reactContext: ReactApplicationContext) :
       .remove("$alarmId:time")
       .remove("$alarmId:period")
       .remove("$alarmId:ringtone")
+      .remove("$alarmId:vibration")
       .apply()
   }
 
@@ -326,10 +351,20 @@ class AlarmScheduler(private val reactContext: ReactApplicationContext) :
       repeatDays: List<String>,
       time: String,
       period: String,
-      ringtone: String
+      ringtone: String,
+      vibrationEnabled: Boolean = true
     ) {
       val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-      val pendingIntent = buildPendingIntent(context, alarmId, label, repeatDays, time, period, ringtone)
+      val pendingIntent = buildPendingIntent(
+        context,
+        alarmId,
+        label,
+        repeatDays,
+        time,
+        period,
+        ringtone,
+        vibrationEnabled
+      )
 
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
         alarmManager.setExactAndAllowWhileIdle(
@@ -354,7 +389,8 @@ class AlarmScheduler(private val reactContext: ReactApplicationContext) :
       repeatDays: List<String> = emptyList(),
       time: String = "",
       period: String = "",
-      ringtone: String = "ringtone"
+      ringtone: String = "ringtone",
+      vibrationEnabled: Boolean = true
     ): PendingIntent {
       val intent = Intent(context, AlarmReceiver::class.java).apply {
         action = ACTION_FIRE_ALARM
@@ -364,6 +400,7 @@ class AlarmScheduler(private val reactContext: ReactApplicationContext) :
         putExtra(EXTRA_ALARM_TIME, time)
         putExtra(EXTRA_ALARM_PERIOD, period)
         putExtra(EXTRA_ALARM_RINGTONE, ringtone)
+        putExtra(EXTRA_ALARM_VIBRATION, vibrationEnabled)
       }
 
       return PendingIntent.getBroadcast(

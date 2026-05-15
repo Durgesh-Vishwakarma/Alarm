@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
     color: theme.colors.textLight,
   },
   switch: {
-    transform: [{ scaleX: 0.78 }, { scaleY: 0.78 }],
+    transform: [{ scaleX: 0.90 }, { scaleY: 0.90 }],
   },
   pressed: {
     opacity: 0.74,
