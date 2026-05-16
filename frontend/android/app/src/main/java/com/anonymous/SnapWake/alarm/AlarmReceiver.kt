@@ -4,10 +4,14 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.util.Log
 import java.util.Calendar
 
 class AlarmReceiver : BroadcastReceiver() {
   override fun onReceive(context: Context, intent: Intent) {
+    val alarmId = intent.getStringExtra(EXTRA_ALARM_ID) ?: "active"
+    Log.i("SnapWakeAlarm", "receiver.fire alarmId=$alarmId action=${intent.action}")
+
     scheduleNextRepeat(context, intent)
 
     val serviceIntent = Intent(context, AlarmForegroundService::class.java).apply {
@@ -17,8 +21,10 @@ class AlarmReceiver : BroadcastReceiver() {
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
       context.startForegroundService(serviceIntent)
+      Log.i("SnapWakeAlarm", "receiver.startForegroundService alarmId=$alarmId")
     } else {
       context.startService(serviceIntent)
+      Log.i("SnapWakeAlarm", "receiver.startService alarmId=$alarmId")
     }
   }
 
@@ -34,6 +40,10 @@ class AlarmReceiver : BroadcastReceiver() {
     val period = intent.getStringExtra(EXTRA_ALARM_PERIOD).orEmpty()
     val vibrationEnabled = intent.getBooleanExtra(EXTRA_ALARM_VIBRATION, true)
     val nextTrigger = nextTriggerMillis(time, period, repeatDays)
+    Log.i(
+      "SnapWakeAlarm",
+      "receiver.repeat.schedule alarmId=$alarmId nextTrigger=$nextTrigger repeatDays=$repeatDays"
+    )
 
     AlarmScheduler.scheduleExact(
       context,

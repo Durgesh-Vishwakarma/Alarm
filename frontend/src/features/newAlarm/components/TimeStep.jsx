@@ -2,7 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { theme } from '../../../theme';
+import { theme } from '../../../shared/theme';
 
 const WHEEL_ITEM_HEIGHT = 50;
 const WHEEL_VISIBLE_ITEMS = 5;

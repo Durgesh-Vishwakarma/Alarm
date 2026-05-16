@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet } from 'react-native';
 
-import { theme } from '../../../theme';
+import { theme } from '../../../shared/theme';
 
 export function FloatingAddButton({ onPress }) {
   return (

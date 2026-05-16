@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Animated, PanResponder, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { useRef } from 'react';
 
-import { theme } from '../../../theme';
+import { theme } from '../../../shared/theme';
 
 const DELETE_REVEAL_WIDTH = 86;
 

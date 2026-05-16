@@ -1,11 +1,3 @@
-import { BodyText, Panel, Screen } from '../../components/Screen';
+import StreakScreen from '../../features/home/screens/StreakScreen';
 
-export default function StreakScreen() {
-  return (
-    <Screen eyebrow="Progress" title="Streak">
-      <Panel>
-        <BodyText>Streak screen placeholder for wake-up consistency and rewards.</BodyText>
-      </Panel>
-    </Screen>
-  );
-}
+export default StreakScreen;

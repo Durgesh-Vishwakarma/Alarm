@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { theme } from '../../../theme';
+import { theme } from '../../../shared/theme';
 import { dayOptions, repeatPresets } from '../data';
 import { SectionTitle } from './FormPrimitives';
 

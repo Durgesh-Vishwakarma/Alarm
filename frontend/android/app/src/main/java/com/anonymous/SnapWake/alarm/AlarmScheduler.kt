@@ -10,6 +10,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
+import android.util.Log
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -19,8 +20,11 @@ import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.bridge.ReadableMap
 import kotlin.math.abs
 
+private const val LOG_TAG = "SnapWakeAlarm"
+
 class AlarmScheduler(private val reactContext: ReactApplicationContext) :
   ReactContextBaseJavaModule(reactContext) {
+  private var bridgeWakeLock: PowerManager.WakeLock? = null
 
   override fun getName(): String = "AlarmScheduler"
 
@@ -113,6 +117,65 @@ class AlarmScheduler(private val reactContext: ReactApplicationContext) :
       promise.resolve(true)
     } catch (error: Exception) {
       promise.reject("STOP_ALARM_FAILED", error)
+    }
+  }
+
+  @ReactMethod
+  fun stopAlarm(promise: Promise) {
+    stopAlarmService(promise)
+  }
+
+  @ReactMethod
+  fun isAlarmRunning(promise: Promise) {
+    val activeAlarmId = reactContext.getSharedPreferences(ALARM_PREFS, Context.MODE_PRIVATE)
+      .getString(ACTIVE_ALARM_ID, null)
+    promise.resolve(activeAlarmId != null)
+  }
+
+  @ReactMethod
+  fun startAlarmActivity(payload: ReadableMap, promise: Promise) {
+    try {
+      val alarmId = payload.getString("id") ?: payload.getString("alarmId") ?: "active"
+      val intent = Intent(reactContext, AlarmActivity::class.java).apply {
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+          Intent.FLAG_ACTIVITY_CLEAR_TOP or
+          Intent.FLAG_ACTIVITY_SINGLE_TOP
+        putExtra(EXTRA_ALARM_ID, alarmId)
+      }
+      reactContext.startActivity(intent)
+      promise.resolve(true)
+    } catch (error: Exception) {
+      promise.reject("START_ALARM_ACTIVITY_FAILED", error)
+    }
+  }
+
+  @ReactMethod
+  fun acquireWakeLock(promise: Promise) {
+    try {
+      val powerManager = reactContext.getSystemService(Context.POWER_SERVICE) as PowerManager
+      if (bridgeWakeLock?.isHeld != true) {
+        bridgeWakeLock = powerManager.newWakeLock(
+          PowerManager.PARTIAL_WAKE_LOCK,
+          "SnapWake:BridgeWakeLock"
+        ).apply {
+          setReferenceCounted(false)
+          acquire(10 * 60 * 1000L)
+        }
+      }
+      promise.resolve(true)
+    } catch (error: Exception) {
+      promise.reject("ACQUIRE_WAKE_LOCK_FAILED", error)
+    }
+  }
+
+  @ReactMethod
+  fun releaseWakeLock(promise: Promise) {
+    try {
+      bridgeWakeLock?.takeIf { it.isHeld }?.release()
+      bridgeWakeLock = null
+      promise.resolve(true)
+    } catch (error: Exception) {
+      promise.reject("RELEASE_WAKE_LOCK_FAILED", error)
     }
   }
 
@@ -307,7 +370,11 @@ class AlarmScheduler(private val reactContext: ReactApplicationContext) :
     ringtone: String,
     vibrationEnabled: Boolean
   ) {
-    persistAlarm(alarmId, triggerAt, label, repeatDays, time, period, ringtone, vibrationEnabled)
+    Log.i(
+      LOG_TAG,
+      "schedule.request alarmId=$alarmId triggerAt=$triggerAt label=$label repeatDays=$repeatDays ringtone=$ringtone vibration=$vibrationEnabled"
+    )
+
     scheduleExact(
       reactContext,
       alarmId,
@@ -319,6 +386,9 @@ class AlarmScheduler(private val reactContext: ReactApplicationContext) :
       ringtone,
       vibrationEnabled
     )
+
+    persistAlarm(alarmId, triggerAt, label, repeatDays, time, period, ringtone, vibrationEnabled)
+    Log.i(LOG_TAG, "schedule.persisted alarmId=$alarmId triggerAt=$triggerAt")
   }
 
   private fun removePersistedAlarm(alarmId: String) {
@@ -366,20 +436,37 @@ class AlarmScheduler(private val reactContext: ReactApplicationContext) :
         vibrationEnabled
       )
 
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-        alarmManager.setExactAndAllowWhileIdle(
-          AlarmManager.RTC_WAKEUP,
-          triggerAtMillis,
+      val showIntent = PendingIntent.getActivity(
+        context,
+        abs("${alarmId}:show".hashCode()),
+        Intent(context, AlarmActivity::class.java).apply {
+          putExtra(EXTRA_ALARM_ID, alarmId)
+          flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        },
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+      )
+
+      Log.i(
+        LOG_TAG,
+        "schedule.exact alarmId=$alarmId triggerAt=$triggerAtMillis now=${System.currentTimeMillis()} sdk=${Build.VERSION.SDK_INT}"
+      )
+
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        alarmManager.setAlarmClock(
+          AlarmManager.AlarmClockInfo(triggerAtMillis, showIntent),
           pendingIntent
         )
+        Log.i(LOG_TAG, "schedule.setAlarmClock alarmId=$alarmId")
       } else {
         alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+        Log.i(LOG_TAG, "schedule.setExact alarmId=$alarmId")
       }
     }
 
     fun cancelScheduled(context: Context, alarmId: String) {
       val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
       alarmManager.cancel(buildPendingIntent(context, alarmId))
+      Log.i(LOG_TAG, "schedule.cancelled alarmId=$alarmId")
     }
 
     private fun buildPendingIntent(

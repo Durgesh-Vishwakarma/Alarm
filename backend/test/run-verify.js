@@ -36,7 +36,6 @@ const buildFormData = ({ filePath, challengeTitle, targets }) => {
   formData.append("challengeId", "manual-test");
   formData.append("challengeTitle", challengeTitle);
   formData.append("capturedAt", new Date().toISOString());
-  formData.append("strictness", "Strict");
   formData.append("targets", JSON.stringify(targets));
 
   return { formData, mimeType };

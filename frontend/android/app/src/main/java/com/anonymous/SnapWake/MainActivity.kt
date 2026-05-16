@@ -1,8 +1,10 @@
 package com.anonymous.SnapWake
 import expo.modules.splashscreen.SplashScreenManager
 
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
@@ -20,7 +22,34 @@ open class MainActivity : ReactActivity() {
     // @generated begin expo-splashscreen - expo prebuild (DO NOT MODIFY) sync-f3ff59a738c56c9a6119210cb55f0b613eb8b6af
     SplashScreenManager.registerOnActivity(this)
     // @generated end expo-splashscreen
+    applyAlarmWindowFlags(intent)
     super.onCreate(null)
+  }
+
+  override fun onNewIntent(intent: Intent) {
+    applyAlarmWindowFlags(intent)
+    super.onNewIntent(intent)
+    setIntent(intent)
+  }
+
+  private fun applyAlarmWindowFlags(intent: Intent?) {
+    if (intent?.data?.toString()?.contains("alarm-alert") != true) return
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+      setShowWhenLocked(true)
+      setTurnScreenOn(true)
+    } else {
+      @Suppress("DEPRECATION")
+      window.addFlags(
+        WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+          WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+      )
+    }
+
+    window.addFlags(
+      WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
+        WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
+    )
   }
 
   /**

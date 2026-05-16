@@ -1,66 +1,80 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import sharp from "sharp";
-import { buildPrompt } from "../ai/prompts.js";
+import { GEMINI_API_KEY } from "../config/env.js";
+import {
+  GEMINI_MODEL,
+  GEMINI_TIMEOUT_MS,
+  IMAGE_JPEG_QUALITY,
+  IMAGE_OPTIMIZE_WIDTH,
+} from "../config/verification.js";
+import { verificationResponse } from "../utils/response.js";
 
 const getClient = () => {
-  if (!process.env.GEMINI_API_KEY) {
-    throw new Error("GEMINI_API_KEY is missing in .env");
+  if (!GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY is missing.");
   }
-  return new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+  return new GoogleGenerativeAI(GEMINI_API_KEY);
 };
+
+const buildPrompt = ({ challengeTitle, targets = [] }) => {
+  const targetText = targets.length > 0 ? targets.join(", ") : challengeTitle;
+
+  return [
+    "You are verifying a wake-up alarm challenge.",
+    `The image must clearly show: "${targetText}".`,
+    "Reply with exactly one word only: YES or NO.",
+  ].join("\n");
+};
+
+const withTimeout = (promise, timeoutMs) =>
+  Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error("Gemini request timeout")), timeoutMs);
+    }),
+  ]);
 
 export const verifyImageWithGemini = async ({
   image,
-  mimetype,
   challengeTitle,
   targets = [],
 }) => {
-  // 1. Image Optimization (width 512, quality 45)
   const optimizedImage = await sharp(image)
-    .resize({ width: 512, withoutEnlargement: true })
-    .jpeg({ quality: 45 })
+    .resize({ width: IMAGE_OPTIMIZE_WIDTH, withoutEnlargement: true })
+    .jpeg({ quality: IMAGE_JPEG_QUALITY })
     .toBuffer();
 
-  // 2. Setup Gemini (Single model, single request)
-  const genAI = getClient();
-  const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash-lite",
+  const model = getClient().getGenerativeModel({
+    model: GEMINI_MODEL,
     generationConfig: {
       temperature: 0.1,
       maxOutputTokens: 2,
     },
   });
 
-  const prompt = buildPrompt({ challengeTitle, targets });
-
-  // 3. Single request with 10s timeout
-  const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error("Gemini request timeout")), 10000)
-  );
-
-  const result = await Promise.race([
+  const result = await withTimeout(
     model.generateContent([
       {
         inlineData: {
           data: optimizedImage.toString("base64"),
-          mimeType: mimetype,
+          mimeType: "image/jpeg",
         },
       },
-      prompt,
+      buildPrompt({ challengeTitle, targets }),
     ]),
-    timeoutPromise,
-  ]);
+    GEMINI_TIMEOUT_MS,
+  );
 
-  const response = await result.response;
-  const text = response.text().trim().toUpperCase();
+  const text = (await result.response).text().trim().toUpperCase();
   const success = text === "YES";
 
-  return {
+  return verificationResponse({
     success,
     confidence: success ? 0.9 : 0.1,
+    provider: "gemini-lite",
     message: success
       ? `${challengeTitle} verified.`
       : `Could not verify "${challengeTitle}".`,
-    provider: "gemini-lite",
-  };
+  });
 };
